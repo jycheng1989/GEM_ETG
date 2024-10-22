@@ -1,0 +1,29 @@
+#!/bin/bash -l
+
+#SBATCH -q debug
+#SBATCH -N 4
+##SBATCH -n 8
+#SBATCH --ntasks-per-node=128
+#SBATCH -c 2
+#SBATCH -t 0:30:00
+#SBATCH -J x
+#SBATCH -C cpu
+##SBATCH --gpus-per-task=1
+##SBATCH --gpu-bind=map_gpu:0,1,2,3
+#SBATCH -A gc3
+
+cd $SLURM_SUBMIT_DIR
+mkdir -p matrix
+mkdir -p out
+mkdir -p dump
+
+#export OMP_PROC_BIND=spread
+#export OMP_PLACES=threads
+#export OMP_NUM_THREADS=8
+
+#cd $SLURM_SUBMIT_DIR
+
+#srun --cpu-bind=cores ./gem_main >& run.out
+
+export SLURM_CPU_BIND="cores"
+srun ./gem_main >& run.out
