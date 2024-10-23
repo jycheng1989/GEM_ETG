@@ -10,7 +10,7 @@
 #SBATCH -C cpu
 ##SBATCH --gpus-per-task=1
 ##SBATCH --gpu-bind=map_gpu:0,1,2,3
-#SBATCH -A gc3
+#SBATCH -A m4491
 
 cd $SLURM_SUBMIT_DIR
 mkdir -p matrix
