@@ -1,53 +1,53 @@
 MODULE gem_equil
-  IMPLICIT NONE
+   IMPLICIT NONE
 ! icandy=0 sets the naieve flux-tube model, i.e. assumes the local flux surfaces are indeed given by R'_0(r0),s_kappa, s_delta, q0p, etc.
 ! The field gradients dbdr(r,theta), dbdth(r, theta), and dydr(r,theta) are then all calculated accordingly.
-! icandy=1 uses the flux-tube model of Candy PPCF 2009 
-  integer :: itube,ibase,iperi,iperidf,ibunit,icandy=0,isprime=0,ildu=0,eldu=0
-  real :: mimp=2,mcmp=12,chgi=1,chgc=6
-  real :: elon0=1.0,tria0=0.0,rmaj0=706.71016,r0,a=254.41566,selon0=0.0,&
-             stria0=0.0,rmaj0p=-0.0,q0p=0.009276,q0=1.41, elonp0=0.,triap0=0.,erp=0.01,er0=0.,q0abs
-  real :: beta,Rovera,shat0,teti,tcti,rhoia,Rovlni,Rovlti,Rovlne,Rovlte,Rovlnc,Rovltc,ncne,nuacs
-  real :: gamma_E,mach
-  real :: f0, f0p,bunit,debye
-  real :: rin,rout,dr,dth,delz,jacmax,eadj
-  real :: cn0e,cn0i,cn0b,cn0c,n0emax,n0imax,n0bmax,n0cmax
-  real :: r0a,lxa,lymult,delra,delri,delre,delrn,rina,routa,betai, &
-               tir0,xnir0,xu,frequ,vu,eru
+! icandy=1 uses the flux-tube model of Candy PPCF 2009
+   integer :: itube,ibase,iperi,iperidf,ibunit,icandy=0,isprime=0,ildu=0,eldu=0
+   real :: mimp=2,mcmp=12,chgi=1,chgc=6
+   real :: elon0=1.0,tria0=0.0,rmaj0=706.71016,r0,a=254.41566,selon0=0.0,&
+      stria0=0.0,rmaj0p=-0.0,q0p=0.009276,q0=1.41, elonp0=0.,triap0=0.,erp=0.01,er0=0.,q0abs
+   real :: beta,Rovera,shat0,teti,tcti,rhoia,Rovlni,Rovlti,Rovlne,Rovlte,Rovlnc,Rovltc,ncne,nuacs
+   real :: gamma_E,mach
+   real :: f0, f0p,bunit,debye
+   real :: rin,rout,dr,dth,delz,jacmax,eadj
+   real :: cn0e,cn0i,cn0b,cn0c,n0emax,n0imax,n0bmax,n0cmax
+   real :: r0a,lxa,lymult,delra,delri,delre,delrn,rina,routa,betai, &
+      tir0,xnir0,xu,frequ,vu,eru
 
-  integer :: nr=100,nr2=50,ntheta=200,idiag=0
-  real,dimension(:,:),allocatable :: bfld,qhat,radius,gr,gth,grdgt,grcgt, &
-                                        gxdgy,dydr,dbdr,dbdth,dqhdr,jacob, &
-                                        yfn,hght,thflx
-  real,dimension(:),allocatable :: rmaj,rmajp,elon,selon,tria,stria, psi,&
-                                      f,psip,sf,jacoba,jfn,zfnth,thfnz,&
-                                      t0i,t0e,t0b,t0c,t0ip,t0ep,t0bp,t0cp,&
-                                      xn0i,xn0e,xn0c,xn0b,xn0ip,xn0ep,xn0bp,&
-                                      xn0cp,vpari,vparc,vparb,&
-                                      vparip,vparcp,vparbp, &
-                                      capti,capte,captb,captc,capni,capne,&
-                                      capnb,capnc,zeff,nue0,phinc,phincp,&
-                                      er,upari,dipdr
+   integer :: nr=100,nr2=50,ntheta=200,idiag=0
+   real,dimension(:,:),allocatable :: bfld,qhat,radius,gr,gth,grdgt,grcgt, &
+      gxdgy,dydr,dbdr,dbdth,dqhdr,jacob, &
+      yfn,hght,thflx
+   real,dimension(:),allocatable :: rmaj,rmajp,elon,selon,tria,stria, psi,&
+      f,psip,sf,jacoba,jfn,zfnth,thfnz,&
+      t0i,t0e,t0b,t0c,t0ip,t0ep,t0bp,t0cp,&
+      xn0i,xn0e,xn0c,xn0b,xn0ip,xn0ep,xn0bp,&
+      xn0cp,vpari,vparc,vparb,&
+      vparip,vparcp,vparbp, &
+      capti,capte,captb,captc,capni,capne,&
+      capnb,capnc,zeff,nue0,phinc,phincp,&
+      er,upari,dipdr
 
 !for Miller local flux-tube
-  real :: candyf0p
-  real,dimension(:),allocatable :: candyd0,candyd1,candyd2,candynus,candynu1,candydr
+   real :: candyf0p
+   real,dimension(:),allocatable :: candyd0,candyd1,candyd2,candynus,candynu1,candydr
 
 !for including bstar effects
-  real,dimension(:),allocatable :: psip2
-  real,dimension(:,:),allocatable :: curvbz,srbr,srbz,thbr,thbz,prsrbr,prsrbz,pthsrbr,pthsrbz,bdcrvb
+   real,dimension(:),allocatable :: psip2
+   real,dimension(:,:),allocatable :: curvbz,srbr,srbz,thbr,thbz,prsrbr,prsrbz,pthsrbr,pthsrbz,bdcrvb
 
-  real,dimension(:,:),allocatable :: t0s,xn0s,capts,capns,vpars,vparsp
-  real,dimension(:),allocatable :: cn0s,n0smax,tgis
-  real :: tge
-  character(len=32) :: trflnm ! profile-data-file name
+   real,dimension(:,:),allocatable :: t0s,xn0s,capts,capns,vpars,vparsp
+   real,dimension(:),allocatable :: cn0s,n0smax,tgis
+   real :: tge
+   character(len=32) :: trflnm ! profile-data-file name
 !  real,external :: erf
 
 contains
-  subroutine new_equil()
+   subroutine new_equil()
       real :: pi,r,th,s,ss,c1,c2,lti,s0,s1,delsi,lte,delse,ln,deln
       parameter(c1=0.43236,c2=2.33528,lti=144.9,s1=0.5,delsi=0.6, &
-                lte=144.9,delse=0.6,deln=0.6,ln=454.5)
+         lte=144.9,delse=0.6,deln=0.6,ln=454.5)
       integer :: i,j,k
       real :: dum,x,denom,dum1,dum2,dum3,dum4,xp,elonp,triap
       real :: t0i0,t0e0,t0c0,ni0,nc0,ne0,t0i0p,t0e0p,t0c0p,ni0p,nc0p,ne0p
@@ -56,49 +56,49 @@ contains
       real :: e,proton,vu,xu,omegau,tu,nu,bu,eps0=8.85e-12,me=0.9e-30
       real :: vte,pprime
       real,dimension(:),allocatable :: dldth,sinu,cosu,dudl,dzdl,bps,&
-                                       grr,grz,gtr,gtz, &
-                                       grdgl,grdgrho,gtdgl,gtdgrho, &
-                                       dldr,dldt,drhdr,drhdt,dbdl,dbdrho, &
-                                       db2dl,db2drho,dbpsdl
+         grr,grz,gtr,gtz, &
+         grdgl,grdgrho,gtdgl,gtdgrho, &
+         dldr,dldt,drhdr,drhdt,dbdl,dbdrho, &
+         db2dl,db2drho,dbpsdl
 
       allocate(bfld(0:nr,0:ntheta),qhat(0:nr,0:ntheta),radius(0:nr,0:ntheta), &
-               gr(0:nr,0:ntheta),gth(0:nr,0:ntheta),grdgt(0:nr,0:ntheta), &
-               grcgt(0:nr,0:ntheta),gxdgy(0:nr,0:ntheta),dydr(0:nr,0:ntheta),&
-               dbdr(0:nr,0:ntheta),dbdth(0:nr,0:ntheta),dqhdr(0:nr,0:ntheta),&
-               jacob(0:nr,0:ntheta), jfn(0:ntheta), zfnth(0:ntheta),&
-               thfnz(0:ntheta),yfn(0:nr,0:ntheta),hght(0:nr,0:ntheta),thflx(0:nr,0:ntheta))
-               
+         gr(0:nr,0:ntheta),gth(0:nr,0:ntheta),grdgt(0:nr,0:ntheta), &
+         grcgt(0:nr,0:ntheta),gxdgy(0:nr,0:ntheta),dydr(0:nr,0:ntheta),&
+         dbdr(0:nr,0:ntheta),dbdth(0:nr,0:ntheta),dqhdr(0:nr,0:ntheta),&
+         jacob(0:nr,0:ntheta), jfn(0:ntheta), zfnth(0:ntheta),&
+         thfnz(0:ntheta),yfn(0:nr,0:ntheta),hght(0:nr,0:ntheta),thflx(0:nr,0:ntheta))
+
       allocate(rmaj(0:nr), elon(0:nr), tria(0:nr), sf(0:nr), psi(0:nr), &
-               rmajp(0:nr),selon(0:nr),stria(0:nr),psip(0:nr),&
-               f(0:nr),jacoba(0:nr),t0i(0:nr),t0e(0:nr),t0b(0:nr),t0c(0:nr),&
-               t0ip(0:nr),t0ep(0:nr),t0bp(0:nr),t0cp(0:nr),xn0i(0:nr),xn0e(0:nr),&
-               xn0b(0:nr),xn0c(0:nr),xn0ip(0:nr),xn0ep(0:nr),xn0bp(0:nr),xn0cp(0:nr),&
-               capti(0:nr),capte(0:nr),captb(0:nr),captc(0:nr),capni(0:nr),&
-               capne(0:nr),capnb(0:nr),capnc(0:nr),zeff(0:nr),nue0(0:nr),&
-               vpari(0:nr),vparc(0:nr),vparb(0:nr),phinc(0:nr), &
-               vparip(0:nr),vparcp(0:nr),vparbp(0:nr),phincp(0:nr),er(0:nr), &
-               upari(0:nr),dipdr(0:nr))
+         rmajp(0:nr),selon(0:nr),stria(0:nr),psip(0:nr),&
+         f(0:nr),jacoba(0:nr),t0i(0:nr),t0e(0:nr),t0b(0:nr),t0c(0:nr),&
+         t0ip(0:nr),t0ep(0:nr),t0bp(0:nr),t0cp(0:nr),xn0i(0:nr),xn0e(0:nr),&
+         xn0b(0:nr),xn0c(0:nr),xn0ip(0:nr),xn0ep(0:nr),xn0bp(0:nr),xn0cp(0:nr),&
+         capti(0:nr),capte(0:nr),captb(0:nr),captc(0:nr),capni(0:nr),&
+         capne(0:nr),capnb(0:nr),capnc(0:nr),zeff(0:nr),nue0(0:nr),&
+         vpari(0:nr),vparc(0:nr),vparb(0:nr),phinc(0:nr), &
+         vparip(0:nr),vparcp(0:nr),vparbp(0:nr),phincp(0:nr),er(0:nr), &
+         upari(0:nr),dipdr(0:nr))
 
       allocate(curvbz(0:nr,0:ntheta),srbr(0:nr,0:ntheta),srbz(0:nr,0:ntheta),&
-               thbr(0:nr,0:ntheta),thbz(0:nr,0:ntheta), psip2(0:nr),bdcrvb(0:nr,0:ntheta),&
-               prsrbr(0:nr,0:ntheta),prsrbz(0:nr,0:ntheta), &
-               pthsrbr(0:nr,0:ntheta),pthsrbz(0:nr,0:ntheta))
+         thbr(0:nr,0:ntheta),thbz(0:nr,0:ntheta), psip2(0:nr),bdcrvb(0:nr,0:ntheta),&
+         prsrbr(0:nr,0:ntheta),prsrbz(0:nr,0:ntheta), &
+         pthsrbr(0:nr,0:ntheta),pthsrbz(0:nr,0:ntheta))
 
 
       allocate(cn0s(1:5),n0smax(1:5),t0s(1:5,0:nr),xn0s(1:5,0:nr),&
-               capts(1:5,0:nr),capns(1:5,0:nr),vpars(1:5,0:nr),&
-               vparsp(1:5,0:nr),tgis(1:5))
+         capts(1:5,0:nr),capns(1:5,0:nr),vpars(1:5,0:nr),&
+         vparsp(1:5,0:nr),tgis(1:5))
       allocate(dldth(0:ntheta),sinu(0:ntheta),cosu(0:ntheta), &
-               dudl(0:ntheta),dzdl(0:ntheta),bps(0:ntheta), &
-               grr(0:ntheta),grz(0:ntheta),gtr(0:ntheta),gtz(0:ntheta))
+         dudl(0:ntheta),dzdl(0:ntheta),bps(0:ntheta), &
+         grr(0:ntheta),grz(0:ntheta),gtr(0:ntheta),gtz(0:ntheta))
       allocate(grdgl(0:ntheta),grdgrho(0:ntheta), &
-               gtdgl(0:ntheta),gtdgrho(0:ntheta))
+         gtdgl(0:ntheta),gtdgrho(0:ntheta))
       allocate(dldr(0:ntheta),dldt(0:ntheta),drhdr(0:ntheta),drhdt(0:ntheta))
       allocate(dbdl(0:ntheta),dbdrho(0:ntheta))
       allocate(db2dl(0:ntheta),db2drho(0:ntheta),dbpsdl(0:ntheta))
       allocate(candyd0(0:ntheta),candyd1(0:ntheta),candyd2(0:ntheta),candynus(0:ntheta),candynu1(0:ntheta),candydr(0:ntheta))
 
-      !Normalization                                                                                                                                             
+      !Normalization
       e = 1.6e-19
       proton = 1.67e-27
       Bu = 2.0
@@ -111,7 +111,7 @@ contains
 !      beta = 0. !4*3.14159*1e-7*nu*Tu/Bu**2
 
       debye = (8.85e-12*Tu/(nu*e**2)) / xu**2
-      
+
       ! if analytical equilibrium
       a = Rmaj0/Rovera
       r0=r0a*a
@@ -184,7 +184,7 @@ contains
          dum2 = -r*sin(th+x*sin(th))*(1+x*cos(th)) !dR d theta
          dum3 = elonp*r*sin(th)+elon0*sin(th) !dZ d r
          dum4 = rmaj0p+cos(th+x*sin(th))-r*sin(th+x*sin(th))* &
-                xp*sin(th)             !dR d r
+            xp*sin(th)             !dR d r
          denom = dum4*dum1-dum3*dum2
          grr(j) = dum1/denom
          grz(j) = -dum2/denom
@@ -234,11 +234,11 @@ contains
             th = -pi+j*dth
             dum1 = elon(i)*r*cos(th)                   !dZ d theta
             dum2 = -r*sin(th+x*sin(th))*(1+x*cos(th))  !dR d theta
-            dum3 = elonp*r*sin(th)+elon(i)*sin(th)     !dZ d r 
-            dum4 = rmajp(i)+cos(th+x*sin(th))-r*sin(th+x*sin(th))* & 
-                    xp*sin(th)                         !dR d r
+            dum3 = elonp*r*sin(th)+elon(i)*sin(th)     !dZ d r
+            dum4 = rmajp(i)+cos(th+x*sin(th))-r*sin(th+x*sin(th))* &
+               xp*sin(th)                         !dR d r
             denom = dum4*dum1-dum3*dum2
-            srbr(i,j) = dum1/denom                     !component of (grad r) along R  
+            srbr(i,j) = dum1/denom                     !component of (grad r) along R
             srbz(i,j) = -dum2/denom                    !component of (grad r) along Z
             thbr(i,j) = -dum3/denom                    !component of (grad theta) along R
             thbz(i,j) = dum4/denom                     !component of (grad theta) along Z
@@ -299,7 +299,7 @@ contains
          zeff(i) = 1.
       end do
       q0abs = q0
-      
+
 ! compute B_p on r0
       do j = 0,ntheta
          bps(j) = psip(nr2)/radius(nr2,j)*gr(nr2,j)
@@ -311,7 +311,7 @@ contains
       dbpsdl(0) = (bps(1)-bps(ntheta-1))/(2*dth)/dldth(j)
       dbpsdl(ntheta) = dbpsdl(0)
 
-!compute term1 in (21) 
+!compute term1 in (21)
       dum1 = 0.
       do j = 0,ntheta-1
          dum1 = dum1+dth*dldth(j)/radius(nr2,j)**3/bps(j)**2*2*dudl(j)
@@ -322,7 +322,7 @@ contains
       dum2 = 0.
       do j = 0,ntheta-1
          dum2 = dum2+dth*dldth(j)/radius(nr2,j)**3/bps(j)**2*(-2)*sinu(j) &
-                     /radius(nr2,j)
+            /radius(nr2,j)
       end do
       dum2 = dum2*f0/(2*pi)
 
@@ -331,14 +331,14 @@ contains
       dum3 = 0.
       do j = 0,ntheta-1
          dum3 = dum3+dth*dldth(j)/radius(nr2,j)**3/bps(j)**2*betai*radius(nr2,j)/bps(j)* &
-              (pprime)
+            (pprime)
       enddo
       dum3 = dum3*f0/(2*pi)
 !compute term4 in (21)
       dum4 = 0.
       do j = 0,ntheta-1
          dum4 = dum4+dth*dldth(j)/radius(nr2,j)**3/bps(j)**2*f0 &
-                     /(radius(nr2,j)*bps(j))
+            /(radius(nr2,j)*bps(j))
       end do
       dum4 = dum4*f0/(2*pi)
 
@@ -356,11 +356,11 @@ contains
       candyd2(ntheta/2) = 0
       do j = ntheta/2+1,ntheta
          candyd0(j) = candyd0(j-1)+dth*dldth(j)/(radius(nr2,j)**2*bps(j))*(dudl(j)/(radius(nr2,j)*bps(j))-sinu(j)/(radius(nr2,j)**2*bps(j)))*f0 &
-                                +dth*dldth(j-1)/(radius(nr2,j-1)**2*bps(j-1))*(dudl(j-1)/(radius(nr2,j-1)*bps(j-1))-sinu(j-1)/(radius(nr2,j-1)**2*bps(j-1)))*f0
+            +dth*dldth(j-1)/(radius(nr2,j-1)**2*bps(j-1))*(dudl(j-1)/(radius(nr2,j-1)*bps(j-1))-sinu(j-1)/(radius(nr2,j-1)**2*bps(j-1)))*f0
          candyd1(j) = candyd1(j-1)+0.5*dth*dldth(j)/(radius(nr2,j)**2*bps(j))*bfld(nr2,j)**2/(bps(j)**2*f0) &
-                                +0.5*dth*dldth(j-1)/(radius(nr2,j-1)**2*bps(j-1))*bfld(nr2,j-1)**2/(bps(j-1)**2*f0)
+            +0.5*dth*dldth(j-1)/(radius(nr2,j-1)**2*bps(j-1))*bfld(nr2,j-1)**2/(bps(j-1)**2*f0)
          candyd2(j) = candyd2(j-1)+0.5*dth*dldth(j)/(radius(nr2,j)**2*bps(j))*betai*f0/bps(j)**2 &
-                                  +0.5*dth*dldth(j-1)/(radius(nr2,j-1)**2*bps(j-1))*betai*f0/bps(j-1)**2
+            +0.5*dth*dldth(j-1)/(radius(nr2,j-1)**2*bps(j-1))*betai*f0/bps(j-1)**2
          candyd0(ntheta-j) = -candyd0(j)
          candyd1(ntheta-j) = -candyd1(j)
          candyd2(ntheta-j) = -candyd2(j)
@@ -377,7 +377,7 @@ contains
       do j = 0,ntheta
          db2dl(j) = -2*f0**2/radius(nr2,j)**3*cosu(j)+2*bps(j)*dbpsdl(j)
          db2drho(j) = f0**2/radius(nr2,j)**2*(2*f0p/psip(nr2)/f0*radius(nr2,j)*bps(j)-2*sinu(j)/radius(nr2,j)) &
-                      -2*bps(j)**2*(dudl(j)+f0*f0p/psip(nr2)/(radius(nr2,j)*bps(j))+betai*radius(nr2,j)*(pprime)/bps(j))
+            -2*bps(j)**2*(dudl(j)+f0*f0p/psip(nr2)/(radius(nr2,j)*bps(j))+betai*radius(nr2,j)*(pprime)/bps(j))
       end do
 
 !set f(i)
@@ -387,7 +387,7 @@ contains
          dipdr(i) = f0p
       end do
 
-!!!!! end of ADD f^prime 
+!!!!! end of ADD f^prime
 
 ! compute psip(r), from f and q
       do i = 0,nr
@@ -415,18 +415,18 @@ contains
          do j = 0,ntheta
             th = -pi+j*dth
             bfld(i,j) = sqrt((f(i)/radius(i,j))**2+ &
-                     (psip(i)/radius(i,j)*gr(i,j))**2)
+               (psip(i)/radius(i,j)*gr(i,j))**2)
             dum2 = -r*sin(th+x*sin(th))*(1+x*cos(th))  !dR d theta
-            dum4 = rmajp(i)+cos(th+x*sin(th))-r*sin(th+x*sin(th))* & 
-                    xp*sin(th)                         !dR d r
+            dum4 = rmajp(i)+cos(th+x*sin(th))-r*sin(th+x*sin(th))* &
+               xp*sin(th)                         !dR d r
 !            dbdr(i,j) = -f(i)/radius(i,j)**2*dum4      !dB_t/dr
 !            dbdth(i,j) = -f(i)/radius(i,j)**2*dum2     !dB_t/dth
             qhat(i,j) = f(i)/radius(i,j)/(psip(i)*grcgt(i,j))
          end do
       end do
 
-!compute dbdr,dbdth from dbdl,dbdrho --- added due to f^prime  
-!(1) finite-difference 
+!compute dbdr,dbdth from dbdl,dbdrho --- added due to f^prime
+!(1) finite-difference
       do i = 1,nr-1
          do j = 1,ntheta-1
             dbdr(i,j) = (bfld(i+1,j)-bfld(i-1,j))/(2*dr)
@@ -486,17 +486,17 @@ contains
          end do
       end do
 
-    !compute the flux coordinate theta
+      !compute the flux coordinate theta
 
-    do i = 0,nr
-       thflx(i,ntheta/2) = 0.
-       dum = 0.
-       do j = ntheta/2+1,ntheta
-          dum = dum+(qhat(i,j-1)+qhat(i,j))*dth/2
-          thflx(i,j) = dum/sf(i)
-          thflx(i,ntheta-j) = -thflx(i,j)
-       end do
-    end do
+      do i = 0,nr
+         thflx(i,ntheta/2) = 0.
+         dum = 0.
+         do j = ntheta/2+1,ntheta
+            dum = dum+(qhat(i,j-1)+qhat(i,j))*dth/2
+            thflx(i,j) = dum/sf(i)
+            thflx(i,ntheta-j) = -thflx(i,j)
+         end do
+      end do
 
 ! use candydr for dydr()
       if(icandy==1)then
@@ -506,7 +506,7 @@ contains
             end do
          end do
       end if
-            
+
 ! compute gxdgy
       jacmax = 0.
       do i = 0,nr
@@ -627,12 +627,12 @@ contains
          jfn(j) = dum/jfn(j)
       end do
 !      jfn = 1.
- 300  continue
+300   continue
 
 !bstar effects
 ! compute psip2(r), from psip(r)
       do i = 1,nr-1
-          psip2(i) = (psip(i+1)-psip(i-1))/(2*dr)
+         psip2(i) = (psip(i+1)-psip(i-1))/(2*dr)
       end do
       psip2(0) = psip2(1)
       psip2(nr) = psip2(nr-1)
@@ -646,7 +646,7 @@ contains
          prsrbr(0,j) = (srbr(1,j)-srbr(0,j))/dr
          prsrbr(nr,j) = (srbr(nr,j)-srbr(nr-1,j))/dr
          prsrbz(0,j) = (srbz(1,j)-srbz(0,j))/dr
-         prsrbz(nr,j) = (srbz(nr,j)-srbz(nr-1,j))/dr         
+         prsrbz(nr,j) = (srbz(nr,j)-srbz(nr-1,j))/dr
       end do
       do i = 0,nr
          do j = 1,ntheta-1
@@ -665,9 +665,9 @@ contains
             dum1 = prsrbz(i,j)*srbz(i,j)+pthsrbz(i,j)*thbz(i,j)
             dum2 = prsrbr(i,j)*srbr(i,j)+pthsrbr(i,j)*thbr(i,j)
             curvbz(i,j) = psip(i)*(dum1/radius(i,j)-srbr(i,j)/radius(i,j)**2 &
-                                   +dum2/radius(i,j))
+               +dum2/radius(i,j))
             bdcrvb(i,j) = f(i)/(bfld(i,j)**2*radius(i,j))*(psip2(i)*(gr(i,j))**2/radius(i,j)+curvbz(i,j)) &
-                          -1./bfld(i,j)**2/radius(i,j)**2*psip(i)*dipdr(i)*gr(i,j)**2
+               -1./bfld(i,j)**2/radius(i,j)**2*psip(i)*dipdr(i)*gr(i,j)**2
          end do
       end do
 
@@ -707,6 +707,6 @@ contains
       curvbz=0
       psip2=0
 
-  end subroutine new_equil
+   end subroutine new_equil
 
 END MODULE gem_equil
