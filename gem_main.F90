@@ -117,41 +117,71 @@ subroutine init
    pi=4.0*atan(1.0)
    pi2 = pi*2.
 
-   open(115,file='gem.in')
-   read(115,*) dumchar
-   read(115,*) itube,iperi,iperidf,ibunit,mimp,mcmp,chgi,chgc
-   read(115,*) dumchar
-   read(115,*) Rovera,elon0,selon0,tria0,stria0,rmaj0p,q0,shat0,teti,tcti,rhoia
-   read(115,*) dumchar
-   read(115,*) Rovlni,Rovlti,Rovlne,Rovlte,Rovlnc,Rovltc,ncne
-   read(115,*) dumchar
-   read(115,*) imx,jmx,kmx,mmx,mmxe,nmx,nsmx,modemx,ntube,icrs_sec,ipg,isphi
-   if(ntube.ne.ntube_checking) then
-      write(*,*) "****ntube in gem.in and gem_com module are different. please make them the same**"
-      !call MPI_FINALIZE(ierr)
-      call MPI_Abort(MPI_COMM_WORLD, errcode, ierr)
-      stop
+   namelist /primary_parameters/ itube, mimp, mcmp, amie, chgi, chgc, imx, jmx, kmx, micell, mecell, nsmx, nsm, &
+                                 lxa, r0a, width, lymult, jcnt, nlow, lr1, &
+                                 dt, nm, izonal, ipara, iput, iget, cut, ision, onemd, nzcrt, &
+                                 amp, tor, ifluid, nuacs, rneui, betai, nonlin1, nonlin2, nonline, &
+                                 vwidth, vwidthe, vcut, mbeam, qbeam
+   namelist /control_parameters/ iperi, iperidf, xshape, yshape, zshape, kxcut, kycut, bcut, c4
+   namelist /diagnosis_parameters/ icrs_sec, ipg, isphi, nplot, xnplt, isft, mynf, frmax, ifskp, idg
+   namelist /fluxtube/ Rovera, elon0, selon0, tria0, stria0, rmaj0p, q0, shat0, teti, tcti, rhoia, &
+                       Rovlni, Rovlti, Rovlne, Rovlte, Rovlnc, Rovltc, ncne
+   namelist /others/ ibunit, nmx, modemx, delra, delri, delrn, nrst, eprs, ntube, isiap, peritr, llk, mlk, ineq0, iflut, npze, npzi, npzc, npzb, &
+                     iphbf, iapbf, idpbf, ishift, fradi, vpp, vt0, yd0, isg, vexbsw, vparsw, mach, gamma_E, isuni, iflr, iorb
+
+   
+   call ppinit_mpi(myid, numprocs)
+   last = numprocs - 1
+   timestep = 0
+   tcurr = 0.
+
+   open(unit=115,file='gem.in',status='old',action='read')
+   read(115,nml=primary_parameters)
+   read(115,nml=control_parameters)
+   read(115,nml=diagnosis_parameters)
+   read(115,nml=fluxtube)
+   read(115,nml=others)
+   close(115)
+
+   if(idg==1)then
+     do i = 0,last
+        if(myid==i)then
+           open(9, file='plot',status='unknown',position='append')
+           write(9,*)'pass read namelists',myid
+           close(9)
+        end if
+        call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+     end do
+   end if
+
+   nonlin(1) = nonlin1
+   nonlin(2) = nonlin2
+
+   ntube=int(numprocs/kmx)
+   if((mod(numprocs,kmx) .ne. 0) .and. myid==0)then
+     write(*,*)'WARNING: MPI number is a multiple of kmx, ntube is not an integer'
+     stop
    endif
 
-   read(115,*) dumchar
-   read(115,*) lxa,lymult,delra,delri,delre,delrn,nrst,eprs,nlow,jcnt
+   mm1 = imx * jmx * kmx * micell
+   mm2 = imx * jmx * kmx * mecell
+   mmx=int(real(mm1/int(kmx*ntube))*1.5)
+   mmxe=int(real(mm2/int(kmx*ntube))*1.5)
+   call ppinit_decomp(myid,numprocs,ntube,tube_comm,grid_comm)
+   call hybinit
+   call mpi_barrier(mpi_comm_world,ierr)
+   if(idg==1)then
+     do i = 0,last
+        if(myid==i)then
+           open(9, file='plot',status='unknown',position='append')
+           write(9,*)'pass hybinit',myid
+           close(9)
+        end if
+        call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+     end do
+   end if
+
    im=imx;jm=jmx;km=kmx
-   read(115,*) dumchar
-   read(115,*) dt,nm,nsm,xshape,yshape,zshape
-   read(115,*) dumchar
-   read(115,*) iput,iget,ision,isiap,peritr,llk,mlk,onemd,izonal,ineq0,iflut
-   read(115,*) dumchar
-   read(115,*) nplot,xnplt,modem,nzcrt,npze,npzi,npzc,npzb
-   read(115,*) dumchar
-   read(115,*) isft,mynf,frmax,ifskp,iphbf,iapbf,idpbf
-   read(115,*) dumchar
-   read(115,*) cut,amp,tor,ishift,fradi,kxcut,kycut,bcut
-   read(115,*) dumchar
-   read(115,*) r0a,width,vpp,vt0,yd0
-   read(115,*) dumchar
-   read(115,*) c4,ifluid,isg,amie,nuacs,rneui,vexbsw,vparsw,mach,gamma_E
-   read(115,*) dumchar
-   read(115,*) betai,nonlin(1),nonlin(2),nonline,ipara,vwidth,vwidthe,vcut,isuni,idg
 
    if(isft==1) iget = 1
    nfreq = 400
@@ -227,20 +257,15 @@ subroutine init
 
    !     begin reading species info, ns=1,nsm...
    if(nsm.le.0) write(*,*)'invalid nsm',nsm
-   read(115,*) dumchar
    ns = 1
-   read(115,*) dumchar
-   read(115,*) mm1,mm2,mims(3),q(3),lr1
+   mims(3) = mbeam
+   q(3) = qbeam
    mims(1)=mimp;mims(2)=mcmp;q(1)=chgi;q(2)=chgc
-   mm2=mm1
 
-   read(115,*) dumchar
-   read(115,*)iflr,iorb
    tmm(1)=mm1
    tmm(2)=mm2
    mm(:)=int(mm1/numprocs)
    mme = int(mm2/numprocs)
-   if (MyId.eq.Last) mm(ns)=mm1-Last*mm(ns)
    !     write(*,*)'in init  ',Myid,mm(ns)
    tets(1)=1
    lr(1)=lr1
@@ -498,7 +523,6 @@ subroutine init
       write(*,*) 't0i(nr/2)= ', t0i(nr/2)
       write(*,*) 'Gyrokrs = ', 2*pi*sqrt(mims(1))*sqrt(t0e(nr/2))/ly/bunit
    end if
-   close(115)
    !      return
 end subroutine init
 
@@ -4110,26 +4134,6 @@ subroutine initialize
    !        complex(8),dimension(0:1) :: x,y
    real,dimension(0:1) :: x,y
    integer :: n,i,j,k,ip
-
-   ntube_checking=ntube !yjhu
-   call ppinit(MyId,numprocs,ntube,TUBE_COMM,GRID_COMM)
-   ! write(*,*)'ppinit  ',myid,numprocs,ntube,TUBE_COMM,GRID_COMM
-
-   !     program begins....
-
-   !     reset timestep counter.
-   Last=numprocs-1
-   timestep=0
-   tcurr = 0.
-
-   !     read input data and initialize...
-
-   call hybinit
-
-!!$  do i=0,Last
-!!$     if (MyId.eq.i) call init
-!!$     call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-!!$  enddo
 
    call init
    if(idg.eq.1)write(*,*)'past init'
