@@ -24,6 +24,7 @@ module gem_com
    integer :: imx,jmx,kmx,mmx,mmxe,nmx,nsmx,nsubd=8,&
       modemx,ntube=8,nxpp,ngdx=5,nb=6, &
       negrd=8,nlgrd=8
+   integer :: micell, mecell, nonlin1, nonlin2
    integer:: ntube_checking !yjhu added, to check value of ntube in this module and in "gem.in" is equal to each other
    character(len=70) outname
    REAL :: endtm,begtm,pstm
