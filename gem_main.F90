@@ -43,7 +43,7 @@ program gem_main
 
       field_start_tm=field_start_tm+MPI_WTIME()
       call field(timestep-1,0)
-      field_start_tm=field_start_tm+MPI_WTIME()
+      field_end_tm=field_end_tm+MPI_WTIME()
 
       diagnose_start_tm=diagnose_start_tm+mpi_wtime()
       call diagnose(timestep-1)
@@ -71,7 +71,7 @@ program gem_main
 
       field_start_tm=field_start_tm+MPI_WTIME()
       call field(timestep,1)
-      field_start_tm=field_start_tm+MPI_WTIME()
+      field_end_tm=field_end_tm+MPI_WTIME()
 
       push_start_tm=push_start_tm+MPI_WTIME()
       call push_wrapper(timestep,0)
@@ -162,21 +162,21 @@ program gem_main
      write(123,*)'total time =', tot_tm
      write(123,*)'accumulate time =', accumulate_tot_tm
      write(123,*)'ampere time =', ampere_tot_tm
-     write(123,*)'poisson time=', poisson_tot_tm
-     write(123,*)'field time=', field_tot_tm
-     write(123,*)'diagnose time=', diagnose_tot_tm
-     write(123,*)'reporter time=', reporter_tot_tm
-     write(123,*)'push time=', push_tot_tm
+     write(123,*)'poisson time =', poisson_tot_tm
+     write(123,*)'field time =', field_tot_tm
+     write(123,*)'diagnose time =', diagnose_tot_tm
+     write(123,*)'reporter time =', reporter_tot_tm
+     write(123,*)'push time =', push_tot_tm
      write(123,*)"============================================="
-     write(123,*)'ppush time=', ppush_tot_tm
-     write(123,*)'cpush time=', cpush_tot_tm
-     write(123,*)'pint time=', pint_tot_tm
-     write(123,*)'cint time=', cint_tot_tm
-     write(123,*)'lorentz time=', lorentz_tot_tm
-     write(123,*)'grid1 ion time=', grid1_ion_tot_tm
-     write(123,*)'grid1 electron time', grid1_electron_tot_tm
-     write(123,*)'init pmove time', init_pmove_tot_tm
-     write(123,*)'pmove time', pmove_tot_tm
+     write(123,*)'ppush time =', ppush_tot_tm
+     write(123,*)'cpush time =', cpush_tot_tm
+     write(123,*)'pint time =', pint_tot_tm
+     write(123,*)'cint time =', cint_tot_tm
+     write(123,*)'lorentz time =', lorentz_tot_tm
+     write(123,*)'grid1 ion time =', grid1_ion_tot_tm
+     write(123,*)'grid1 electron time =', grid1_electron_tot_tm
+     write(123,*)'init pmove time =', init_pmove_tot_tm
+     write(123,*)'pmove time =', pmove_tot_tm
      close(123)
    endif 
    !  write(*,*)'ps time=',pstm,'tot time=',tottm
