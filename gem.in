@@ -28,7 +28,7 @@ nlow = 1              !toroidal modes with Fourier index 0<j<nlow are filtered
 lr1 = 4               !number of points for gyro averaging. 4 always in gem.in
 
 dt = 0.1              !times steps in units of omega_u=eB/mp
-nm = 200              !total no of times steps
+nm = 10              !total no of times steps
 
 izonal = 1            !0: remove the zonal component
 ipara = 0             !switch to take in to parallel non-linearity. 0: exclude; 1: include
@@ -75,7 +75,7 @@ icrs_sec = 0          !used in global codes to plot poloidal cross-section
 ipg = 100             !which snapshot to get
 isphi = 1             !which potential to plot. 0 for A_||; 1 for phi
 nplot = 100           !the interval in time steps, at which the data are stored for contour plots and other post-processing stuff
-xnplt = 10            !the interval in time steps at which spec and dchi called to calculate potentials, weight, fluxes and other stuff
+xnplt = 1            !the interval in time steps at which spec and dchi called to calculate potentials, weight, fluxes and other stuff
 isft = 0              !if isft=1, code calculates the real frequency
 mynf = 10             !nfreq=kmx*mynf no of points in in Fourier transform
 frmax = 0.1           !maximum range of frequency

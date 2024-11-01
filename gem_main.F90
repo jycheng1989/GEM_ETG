@@ -7,6 +7,7 @@ program gem_main
    use gem_fft_wrapper
    implicit none
    integer :: n,i,j,k,ip
+   real :: dum
 
    call initialize
    ! use the following two lines for r-theta contour plot
@@ -28,22 +29,53 @@ program gem_main
    do  timestep=ncurr,nm
       tcurr = tcurr+dt
 
+      accumulate_start_tm=accumulate_start_tm+MPI_WTIME()
       call accumulate(timestep-1,0)
+      accumulate_end_tm=accumulate_end_tm+MPI_WTIME()
+      
+      ampere_start_tm=ampere_start_tm+MPI_WTIME()
       call ampere(timestep-1,0)
+      ampere_end_tm=ampere_end_tm+MPI_WTIME()      
+
+      poisson_start_tm=poisson_start_tm+MPI_WTIME()
       call poisson(timestep-1,0)
+      poisson_end_tm=poisson_end_tm+MPI_WTIME()
+
+      field_start_tm=field_start_tm+MPI_WTIME()
       call field(timestep-1,0)
+      field_start_tm=field_start_tm+MPI_WTIME()
 
+      diagnose_start_tm=diagnose_start_tm+mpi_wtime()
       call diagnose(timestep-1)
+      diagnose_end_tm=diagnose_end_tm+mpi_wtime()
+
+      reporter_start_tm=reporter_start_tm+MPI_WTIME()
       call reporter(timestep-1)
+      reporter_end_tm=reporter_end_tm+MPI_WTIME()
 
+      push_start_tm=push_start_tm+MPI_WTIME()
       call push_wrapper(timestep,1)
+      push_end_tm=push_end_tm+MPI_WTIME()
 
+      accumulate_start_tm=accumulate_start_tm+MPI_WTIME()      
       call accumulate(timestep,1)
-      call ampere(timestep,1)
-      call poisson(timestep,1)
-      call field(timestep,1)
+      accumulate_end_tm=accumulate_end_tm+MPI_WTIME()
 
+      ampere_start_tm=ampere_start_tm+MPI_WTIME()
+      call ampere(timestep,1)
+      ampere_end_tm=ampere_end_tm+MPI_WTIME()
+
+      poisson_start_tm=poisson_start_tm+MPI_WTIME()
+      call poisson(timestep,1)
+      poisson_end_tm=poisson_end_tm+MPI_WTIME()
+
+      field_start_tm=field_start_tm+MPI_WTIME()
+      call field(timestep,1)
+      field_start_tm=field_start_tm+MPI_WTIME()
+
+      push_start_tm=push_start_tm+MPI_WTIME()
       call push_wrapper(timestep,0)
+      push_end_tm=push_end_tm+MPI_WTIME()
       if(mod(timestep,1000)==0)then
          do i=0,last
             !                 if(myid==i)write(*,*)myid,mm(1),mme
@@ -55,6 +87,98 @@ program gem_main
 !  call ftcamp
    lasttm=MPI_WTIME()
    tottm=lasttm-starttm
+
+   accumulate_tot_tm = accumulate_end_tm - accumulate_start_tm
+   ampere_tot_tm = ampere_end_tm - ampere_start_tm
+   poisson_tot_tm = poisson_end_tm - poisson_start_tm
+   field_tot_tm = field_end_tm - field_start_tm
+   diagnose_tot_tm = diagnose_end_tm - diagnose_start_tm
+   reporter_tot_tm = reporter_end_tm - reporter_start_tm
+   push_tot_tm = push_end_tm - push_start_tm
+   ppush_tot_tm = ppush_end_tm - ppush_start_tm
+   cpush_tot_tm = cpush_end_tm - cpush_start_tm
+   pint_tot_tm = pint_end_tm - pint_start_tm
+   cint_tot_tm = cint_end_tm - cint_start_tm
+   lorentz_tot_tm = lorentz_end_tm - lorentz_start_tm
+   grid1_ion_tot_tm = grid1_ion_end_tm - grid1_ion_start_tm
+   grid1_electron_tot_tm = grid1_electron_end_tm - grid1_electron_start_tm
+   init_pmove_tot_tm = init_pmove_end_tm - init_pmove_start_tm
+   pmove_tot_tm = pmove_end_tm - pmove_start_tm
+
+   call mpi_reduce(tottm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(accumulate_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   accumulate_tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(ampere_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   ampere_tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(poisson_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   poisson_tot_tm = dum / real(numprocs)
+   
+   call mpi_reduce(field_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   field_tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(diagnose_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   diagnose_tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(reporter_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   reporter_tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(push_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   push_tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(ppush_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   ppush_tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(cpush_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   cpush_tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(pint_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   pint_tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(cint_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   cint_tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(lorentz_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   lorentz_tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(grid1_ion_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   grid1_ion_tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(grid1_electron_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   grid1_electron_tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(init_pmove_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   init_pmove_tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(pmove_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   pmove_tot_tm = dum / real(numprocs)
+
+ 
+   if(myid==0)then
+     open(123, file="timing.txt", status="replace", action="write")
+     write(123,*)'total time =', tot_tm
+     write(123,*)'accumulate time =', accumulate_tot_tm
+     write(123,*)'ampere time =', ampere_tot_tm
+     write(123,*)'poisson time=', poisson_tot_tm
+     write(123,*)'field time=', field_tot_tm
+     write(123,*)'diagnose time=', diagnose_tot_tm
+     write(123,*)'reporter time=', reporter_tot_tm
+     write(123,*)'push time=', push_tot_tm
+     write(123,*)"============================================="
+     write(123,*)'ppush time=', ppush_tot_tm
+     write(123,*)'cpush time=', cpush_tot_tm
+     write(123,*)'pint time=', pint_tot_tm
+     write(123,*)'cint time=', cint_tot_tm
+     write(123,*)'lorentz time=', lorentz_tot_tm
+     write(123,*)'grid1 ion time=', grid1_ion_tot_tm
+     write(123,*)'grid1 electron time', grid1_electron_tot_tm
+     write(123,*)'init pmove time', init_pmove_tot_tm
+     write(123,*)'pmove time', pmove_tot_tm
+     close(123)
+   endif 
    !  write(*,*)'ps time=',pstm,'tot time=',tottm
    do i=0,last
       !            if(myid==i)write(*,*)myid,mm(1),mme
@@ -105,7 +229,8 @@ subroutine init
    implicit none
    character(len=62) dumchar
    INTEGER :: i,j,k,m,n,ns,idum,i1,j1,k1
-   INTEGER :: mm1,mm2,lr1
+   INTEGER :: lr1
+   INTEGER*8 :: mm1, mm2
    integer :: errcode !yjhu
    real :: mims1,tets1,q1,kappan,kappat,r,qr,th,cost,dum,zdum
    real :: dbdrp,dbdtp,grcgtp,bfldp,fp,radiusp,dydrp,qhatp,psipp
@@ -163,10 +288,11 @@ subroutine init
      stop
    endif
 
-   mm1 = imx * jmx * kmx * micell
-   mm2 = imx * jmx * kmx * mecell
-   mmx=int(real(mm1/int(kmx*ntube))*1.5)
-   mmxe=int(real(mm2/int(kmx*ntube))*1.5)
+   mm1 = int(imx,8) * int(jmx,8) * int(kmx,8) * int(micell,8)
+   mm2 = int(imx,8) * int(jmx,8) * int(kmx,8) * int(mecell,8)
+   mmx=int(real(mm1)/real(kmx*ntube)*5.)
+   mmxe=int(real(mm2)/real(kmx*ntube)*5.)
+   if(myid==0) write(*,*)'mm1,mm2,mmx,mmxe',mm1,mm2,mmx,mmxe
    call ppinit_decomp(myid,numprocs,ntube,tube_comm,grid_comm)
    call hybinit
    call mpi_barrier(mpi_comm_world,ierr)
@@ -266,6 +392,7 @@ subroutine init
    tmm(2)=mm2
    mm(:)=int(mm1/numprocs)
    mme = int(mm2/numprocs)
+   if(myid==0)write(*,*)'tmm, mm, mme', tmm, mm, mme
    !     write(*,*)'in init  ',Myid,mm(ns)
    tets(1)=1
    lr(1)=lr1
@@ -289,9 +416,9 @@ subroutine init
 
    if(iget.eq.1) amp=0.
    !     totvol is the square for now...
-   dx=lx/float(im)
-   dy=ly/float(jm)
-   dz=lz/float(km)
+   dx=lx/real(im)
+   dy=ly/real(jm)
+   dz=lz/real(km)
    !      totvol=lx*ly*lz
 
    e0=lr0/q0/br0
@@ -300,13 +427,13 @@ subroutine init
       xg(i)=i*dx !dx*(tclr*nxpp+i)
    enddo
    do j=0,jm
-      yg(j)=dy*float(j)
+      yg(j)=dy*real(j)
    enddo
    kcnt=1
 
    do k=0,mykm
       n=GCLR*kcnt+k
-      zg(k)=dz*float(n)
+      zg(k)=dz*real(n)
    enddo
 
    !      jcnt = 3  !jmx/ntube
@@ -314,7 +441,7 @@ subroutine init
    ntor0 = mstart+1
    do m = 0,jcnt-1
       isgnft(m) = 1
-      j1 = mstart+int((float(m)+1.0)/2)
+      j1 = mstart+int((real(m)+1.0)/2)
       jft(m) = j1
       if(m==0)then
          isgnft(m) = 1
@@ -529,11 +656,12 @@ end subroutine init
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 subroutine ppush(n,ns)
-   use mpi,         only : mpi_comm_world, mpi_integer, mpi_sum !standard MPI library variables
+   use mpi !standard MPI library variables
    use gem_com, only : x2, y2, z2, u2, w2, x3, y3, z3, u3, w3 !modified
    use gem_com, only : mu, xii, z0i, pzi, eki, u0i, mm, br0, dt, dx, dy, dz, gclr, ierr, iflr, iorb, ipara, &
    & nopi,kcnt, lr0, lx, ly, lz, peritr, pi, tor, vexbsw, vparsw, vwidth, q, mims, &
    & ex, ey, ez, delbx, delby, dpdz, dadz, apar, lr, nonlin, pzcrit,ran2,iseed,pi2
+   use gem_com, only : ppush_start_tm, ppush_end_tm, init_pmove_start_tm, init_pmove_end_tm, pmove_start_tm, pmove_end_tm
    use gem_pputil,  only : init_pmove, pmove, ppexit, end_pmove !subroutine names
    use gem_equil,   only : delz, dr, dth, ildu, iperidf, nr,q0, r0, rin, thfnz, dbdr, dbdth, &
    & grcgt, bfld, radius, dydr, qhat, gr, gxdgy, curvbz, bdcrvb, grdgt,f, jfn, &
@@ -556,6 +684,7 @@ subroutine ppush(n,ns)
    pidum = 1./(pi*2)**1.5*vwidth**3
    mynopi = 0
    nopi(ns) = 0
+   ppush_start_tm = ppush_start_tm+MPI_WTIME()
    do m=1,mm(ns)
       r=x2(ns,m)-0.5*lx+lr0
       k = int(z2(ns,m)/delz)
@@ -762,12 +891,17 @@ subroutine ppush(n,ns)
       x3(ns,m)=modulo(x3(ns,m),lx)
 
    enddo
+   ppush_end_tm = ppush_end_tm + MPI_WTIME()
    call MPI_ALLREDUCE(mynopi,nopi(ns),1,MPI_integer, &
       MPI_SUM, MPI_COMM_WORLD,ierr)
 
    np_old=mm(ns)
-   call init_pmove(z3(ns,:),np_old,lz,ierr)
 
+   init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
+   call init_pmove(z3(ns,:),np_old,lz,ierr)
+   init_pmove_end_tm = init_pmove_end_tm + MPI_WTIME()
+
+   pmove_start_tm = pmove_start_tm + MPI_WTIME()
    call pmove(x2(ns,:),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
    call pmove(x3(ns,:),np_old,np_new,ierr)
@@ -793,7 +927,7 @@ subroutine ppush(n,ns)
 
    call pmove(eki(ns,:),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-
+   pmove_end_tm = pmove_end_tm + MPI_WTIME()
    call end_pmove(ierr)
    mm(ns)=np_new
 
@@ -810,6 +944,7 @@ subroutine cpush(n,ns)
    use gem_equil,  only : dbdr, delz, dr, dth, ildu, iperidf, nr, q0, r0, rin, thfnz, dbdth, &
    & grcgt, bfld, radius, dydr, qhat, gr, gxdgy, curvbz, bdcrvb, grdgt, f, jfn, psip, &
    & psi, t0s, capts, capns, xn0s, psip2, dipdr, phincp, vparsp, tgis, sf, cn0s, rmaj0
+   use gem_com, only : cpush_start_tm, cpush_end_tm, init_pmove_start_tm, init_pmove_end_tm, pmove_start_tm, pmove_end_tm
    use gem_pputil, only : init_pmove, pmove, end_pmove, ppexit
    implicit none
    INTEGER :: n
@@ -844,6 +979,7 @@ subroutine cpush(n,ns)
    nostemp=0.
    pidum = 1./(pi*2)**1.5*vwidth**3
 
+   cpush_start_tm = cpush_start_tm + MPI_WTIME()
    do m=1,mm(ns)
       r=x3(ns,m)-0.5*lx+lr0
 
@@ -1064,6 +1200,7 @@ subroutine cpush(n,ns)
       !     100     continue
    enddo
 
+   cpush_end_tm = cpush_end_tm + MPI_WTIME()
    sbuf(1)=myke
    sbuf(2)=myefl_es(nsubd/2)
    sbuf(3)=mypfl_es(nsubd/2)
@@ -1077,9 +1214,9 @@ subroutine cpush(n,ns)
    efltemp=rbuf(2)
    pfltemp=rbuf(3)
    nostemp=rbuf(4)
-   avewi(ns,n) = rbuf(5)/( float(tmm(1)) )
-   nos(1,n)=nostemp/( float(tmm(1)) )
-   ke(1,n)=ketemp/( 2.*float(tmm(1))*mims(ns) )
+   avewi(ns,n) = rbuf(5)/( real(tmm(1)) )
+   nos(1,n)=nostemp/( real(tmm(1)) )
+   ke(1,n)=ketemp/( 2.*real(tmm(1))*mims(ns) )
 
    call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 
@@ -1088,7 +1225,7 @@ subroutine cpush(n,ns)
       MPI_REAL8,MPI_SUM,  &
       MPI_COMM_WORLD,ierr)
    do k = 1,nsubd
-      efl_es(ns,k,n)=rbuf(k)/( float(tmm(1)) )*totvol/vol(k)*cn0s(ns)
+      efl_es(ns,k,n)=rbuf(k)/( real(tmm(1)) )*totvol/vol(k)*cn0s(ns)
    end do
 
    sbuf(1:nsubd) = myefl_em(1:nsubd)
@@ -1096,7 +1233,7 @@ subroutine cpush(n,ns)
       MPI_REAL8,MPI_SUM,  &
       MPI_COMM_WORLD,ierr)
    do k = 1,nsubd
-      efl_em(ns,k,n)=rbuf(k)/( float(tmm(1)) )*totvol/vol(k)*cn0s(ns)
+      efl_em(ns,k,n)=rbuf(k)/( real(tmm(1)) )*totvol/vol(k)*cn0s(ns)
    end do
 
    sbuf(1:nsubd) = mypfl_es(1:nsubd)
@@ -1104,7 +1241,7 @@ subroutine cpush(n,ns)
       MPI_REAL8,MPI_SUM,  &
       MPI_COMM_WORLD,ierr)
    do k = 1,nsubd
-      pfl_es(ns,k,n)=rbuf(k)/( float(tmm(1)) )*totvol/vol(k)*cn0s(ns)
+      pfl_es(ns,k,n)=rbuf(k)/( real(tmm(1)) )*totvol/vol(k)*cn0s(ns)
    end do
 
    sbuf(1:nsubd) = mypfl_em(1:nsubd)
@@ -1112,16 +1249,19 @@ subroutine cpush(n,ns)
       MPI_REAL8,MPI_SUM,  &
       MPI_COMM_WORLD,ierr)
    do k = 1,nsubd
-      pfl_em(ns,k,n)=rbuf(k)/( float(tmm(1)) )*totvol/vol(k)*cn0s(ns)
+      pfl_em(ns,k,n)=rbuf(k)/( real(tmm(1)) )*totvol/vol(k)*cn0s(ns)
    end do
 
-   !      pfl(1,n)=pfltemp/( float(tmm(1)) )
-   !      efl(1,n)=mims(ns)/tets(1)*efltemp/( float(tmm(1)) )
+   !      pfl(1,n)=pfltemp/( real(tmm(1)) )
+   !      efl(1,n)=mims(ns)/tets(1)*efltemp/( real(tmm(1)) )
 
    np_old=mm(ns)
    call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+   init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
    call init_pmove(z3(ns,:),np_old,lz,ierr)
-   !
+   init_pmove_end_tm = init_pmove_end_tm + MPI_WTIME()
+   
+   pmove_start_tm = pmove_start_tm + MPI_WTIME()
    call pmove(x2(ns,:),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
    call pmove(x3(ns,:),np_old,np_new,ierr)
@@ -1148,6 +1288,7 @@ subroutine cpush(n,ns)
    call pmove(eki(ns,:),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
+   pmove_end_tm = pmove_end_tm + MPI_WTIME()
    call end_pmove(ierr)
    mm(ns)=np_new
    !     write(*,*)MyId,mm(ns)
@@ -1221,9 +1362,10 @@ subroutine grid1(ip,n)
       myden = 0.
       myjpar = 0.
       mydti = 0.
+      grid1_ion_start_tm = grid1_ion_start_tm + MPI_WTIME()
       do m=1,mm(ns)
-!yjhu        dv=float(lr(1))*(dx*dy*dz)
-         dv=float(lr(ns))*(dx*dy*dz) !yjhu added
+!yjhu        dv=real(lr(1))*(dx*dy*dz)
+         dv=real(lr(ns))*(dx*dy*dz) !yjhu added
          r=x3(ns,m)-0.5*lx+lr0
 
          k = int(z3(ns,m)/delz)
@@ -1292,6 +1434,7 @@ subroutine grid1(ip,n)
 
          enddo !yjhu N-point in gyo-phase
       enddo !loop over markers
+      grid1_ion_end_tm = grid1_ion_end_tm + MPI_WTIME()
       if(idg.eq.1)write(*,*)myid,'pass ion grid1'
       call MPI_BARRIER(MPI_COMM_WORLD,ierr)
       !   enforce periodicity
@@ -1342,6 +1485,7 @@ subroutine grid1(ip,n)
    mydene = 0.
    myupar = 0.
    if(idg.eq.1)write(*,*)'enter electron grid1'
+   grid1_electron_start_tm = grid1_electron_start_tm + MPI_WTIME()
    do m=1,mme
       r=x3e(m)-0.5*lx+lr0
 
@@ -1413,11 +1557,11 @@ subroutine grid1(ip,n)
          j=int(yt/dy)
          k=0 !int(z3e(m)/dz)-gclr*kcnt
 
-         wx0=float(i+1)-xt/dx
+         wx0=real(i+1)-xt/dx
          wx1=1.-wx0
-         wy0=float(j+1)-yt/dy
+         wy0=real(j+1)-yt/dy
          wy1=1.-wy0
-         wz0=float(gclr*kcnt+k+1)-z3e(m)/dz
+         wz0=real(gclr*kcnt+k+1)-z3e(m)/dz
          wz1=1.-wz0
          x000=wx0*wy0*wz0
          x001=wx0*wy0*wz1
@@ -1447,6 +1591,7 @@ subroutine grid1(ip,n)
          myupar(i+1,j+1,k+1)=myupar(i+1,j+1,k+1)+wght*vpar*x111
       enddo !yjhu N-point in gyo-phase
    enddo !loop over markers
+   grid1_electron_end_tm = grid1_electron_end_tm + MPI_WTIME()
    if(idg.eq.1)write(*,*)'pass electron grid1'
    !   enforce periodicity
    call enforce(mydene(:,:,:))
@@ -1529,14 +1674,14 @@ subroutine modes2(u,modehis,n)
             call ccfft('x',1,imx,1.0,tmpx,coefx,workx,0)
             ii=lmode(mode) !+1
             if(lmode(mode).lt.0) write(*,*) 'lmode < 0, error'
-            tmpy(j)=tmpx(ii)/float(im)
+            tmpy(j)=tmpx(ii)/real(im)
          enddo
 
          !     FT in y....
          call ccfft('y',1,jmx,1.0,tmpy,coefy,worky,0)
          jj=mmode(mode)  !+1
          if(mmode(mode).lt.0) write(*,*) 'mmode < 0, error'
-         modebuf=tmpy(jj)/float(jm)
+         modebuf=tmpy(jj)/real(jm)
 
       endif
 
@@ -1699,7 +1844,7 @@ subroutine weight
    !         peritr = 0
    if (GCLR.eq.Master.and.peritr.eq.0) then
       do i=0,im
-         r=float(i)*dx-0.5*lx+lr0
+         r=real(i)*dx-0.5*lx+lr0
          j = int((r-rin)/dr)
          j = min(j,nr-1)
          wx0 = (rin+(j+1)*dr-r)/dr
@@ -1714,7 +1859,7 @@ subroutine weight
       enddo
    elseif (GCLR.eq.GLST.and.peritr.eq.0) then
       do i=0,im
-         r=float(i)*dx-0.5*lx+lr0
+         r=real(i)*dx-0.5*lx+lr0
          j = int((r-rin)/dr)
          j = min(j,nr-1)
          wx0 = (rin+(j+1)*dr-r)/dr
@@ -1840,13 +1985,13 @@ subroutine gkps(nstep,ip)
                   grdgtp = wx0*wz0*grdgt(i1,k)+wx0*wz1*grdgt(i1,k+1) &
                      +wx1*wz0*grdgt(i1+1,k)+wx1*wz1*grdgt(i1+1,k+1)
 
-                  m1 = mstart+int((float(m)+1.0)/2)
+                  m1 = mstart+int((real(m)+1.0)/2)
                   if(m==0)m1=0
                   sgny = isgnft(m)
 
-                  ky=sgny*2.*pi*float(m1)/ly
-                  kx1=pi*float(l)/lx
-                  kx2=-pi*float(l)/lx
+                  ky=sgny*2.*pi*real(m1)/ly
+                  kx1=pi*real(l)/lx
+                  kx2=-pi*real(l)/lx
                   bf=bfldp
 
                   do ns = 1, nsm
@@ -2124,7 +2269,7 @@ subroutine spec(n)
    efb_em = 0.
    pfb_em = 0.
    k = 2
-   x = float(nsubd)/float(nsubd-2*k)
+   x = real(nsubd)/real(nsubd-2*k)
    do j = 1+k,nsubd-k
       pf = pf+pfle_es(j,n)*vol(j)/totvol*x
       efe = efe+efle_es(j,n)*vol(j)/totvol*x
@@ -2281,11 +2426,11 @@ subroutine ezamp(nstep,ip)
                   grdgtp = wx0*wz0*grdgt(i1,k1)+wx0*wz1*grdgt(i1,k1+1) &
                      +wx1*wz0*grdgt(i1+1,k1)+wx1*wz1*grdgt(i1+1,k1+1)
 
-                  m1 = mstart+int((float(m)+1.0)/2)
+                  m1 = mstart+int((real(m)+1.0)/2)
                   if(m==0)m1=0
                   sgny = isgnft(m)
-                  ky=sgny*2.*pi*float(m1)/ly
-                  kx=pi*float(l)/lx
+                  ky=sgny*2.*pi*real(m1)/ly
+                  kx=pi*real(l)/lx
                   akx(l) = kx
                   aky(m) = ky
                   bf=bfldp
@@ -2614,7 +2759,7 @@ subroutine filter(u)
    ss1 = 0.
    kzlook = 0
    do ikz = 0,NMDZ-1
-      rkz = 2.*pi/lz*float(kzlook+ikz)
+      rkz = 2.*pi/lz*real(kzlook+ikz)
       do i = 0,im
          do j = 0,jm
             do k = 0,mykm-1
@@ -2635,8 +2780,8 @@ subroutine filter(u)
 
    do i = 0,im
       do j = 0,jm
-         cc1(i,j,0) = 1./float(km)*cc1(i,j,0)*0.
-         ss1(i,j,0) = 1./float(km)*ss1(i,j,0)
+         cc1(i,j,0) = 1./real(km)*cc1(i,j,0)*0.
+         ss1(i,j,0) = 1./real(km)*ss1(i,j,0)
       end do
    end do
 
@@ -2644,8 +2789,8 @@ subroutine filter(u)
       do i = 0,im
          do j = 0,jm
             do ikz = 1,NMDZ-1
-               cc1(i,j,ikz) = 2./float(km)*cc1(i,j,ikz)
-               ss1(i,j,ikz) = 2./float(km)*ss1(i,j,ikz)
+               cc1(i,j,ikz) = 2./real(km)*cc1(i,j,ikz)
+               ss1(i,j,ikz) = 2./real(km)*ss1(i,j,ikz)
             end do
          end do
       end do
@@ -2661,7 +2806,7 @@ subroutine filter(u)
          do k = 0,mykm
             temp(i,j,k) = 0.
             do ikz = 0,NMDZ-1
-               rkz = 2.*pi/lz*float(kzlook+ikz)
+               rkz = 2.*pi/lz*real(kzlook+ikz)
                temp(i,j,k) = temp(i,j,k)+cc1(i,j,ikz)*cos(zg(k)*rkz) &
                   +ss1(i,j,ikz)*sin(zg(k)*rkz)
             end do
@@ -2968,7 +3113,7 @@ subroutine loadi(ns)
       MPI_REAL8, &
       MPI_SUM,MPI_COMM_WORLD,ierr)
    if(idg.eq.1)write(*,*)'all reduce'
-   avgv=avgv/float(tmm(1))
+   avgv=avgv/real(tmm(1))
    do m=1,mm(ns)
       u2(ns,m)=u2(ns,m)-avgv
       x3(ns,m)=x2(ns,m)
@@ -3270,6 +3415,7 @@ subroutine pint
    myavptch = 0.
    myaven = 0.
    pidum = 1./(pi*2)**1.5*(vwidthe)**3
+   pint_start_tm = pint_start_tm + MPI_WTIME()
    do m=1,mme
       r=x2e(m)-0.5*lx+lr0
 
@@ -3359,11 +3505,11 @@ subroutine pint
          !yjhu k=0 !int(z3e(m)/dz)-gclr*kcnt
          k=int(z3e(m)/dz)-gclr*kcnt !yjhu
 
-         wx0=float(i+1)-xt/dx
+         wx0=real(i+1)-xt/dx
          wx1=1.-wx0
-         wy0=float(j+1)-yt/dy
+         wy0=real(j+1)-yt/dy
          wy1=1.-wy0
-         wz0=float(gclr*kcnt+k+1)-z2e(m)/dz
+         wz0=real(gclr*kcnt+k+1)-z2e(m)/dz
          wz1=1.-wz0
          x000=wx0*wy0*wz0
          x001=wx0*wy0*wz1
@@ -3550,6 +3696,7 @@ subroutine pint
       x3e(m)=modulo(x3e(m),lx)
 
    end do
+   pint_end_tm = pint_end_tm + MPI_WTIME()
    call MPI_ALLREDUCE(myopz,nopz,1,MPI_integer, &
       MPI_SUM, MPI_COMM_WORLD,ierr)
    call MPI_ALLREDUCE(myoen,noen,1,MPI_integer, &
@@ -3562,7 +3709,11 @@ subroutine pint
    avptch = avptch/(noen+0.1)
 
    np_old=mme
+   init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
    call init_pmove(z3e,np_old,lz,ierr)
+   init_pmove_end_tm = init_pmove_end_tm + MPI_WTIME()
+
+   pmove_start_tm = pmove_start_tm + MPI_WTIME()
    call pmove(x2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
    call pmove(x3e,np_old,np_new,ierr)
@@ -3598,6 +3749,8 @@ subroutine pint
 
    call pmove(eke,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
+
+   pmove_end_tm = pmove_end_tm + MPI_WTIME()
 
    call end_pmove(ierr)
    mme=np_new
@@ -3649,6 +3802,8 @@ subroutine cint(n)
    mynowe = 0
 
    pidum = 1./(pi*2)**1.5*(vwidthe)**3
+
+   cint_start_tm = cint_start_tm + MPI_WTIME()
    do m=1,mme
       r=x3e(m)-0.5*lx+lr0
 
@@ -3734,11 +3889,11 @@ subroutine cint(n)
          j=int(yt/dy)
          k=0 !int(z3e(m)/dz)-gclr*kcnt
 
-         wx0=float(i+1)-xt/dx
+         wx0=real(i+1)-xt/dx
          wx1=1.-wx0
-         wy0=float(j+1)-yt/dy
+         wy0=real(j+1)-yt/dy
          wy1=1.-wy0
-         wz0=float(gclr*kcnt+k+1)-z3e(m)/dz
+         wz0=real(gclr*kcnt+k+1)-z3e(m)/dz
          wz1=1.-wz0
          x000=wx0*wy0*wz0
          x001=wx0*wy0*wz1
@@ -3948,6 +4103,8 @@ subroutine cint(n)
       w2e(m)=w3e(m)
 
    enddo
+
+   cint_end_tm = cint_end_tm + MPI_WTIME()
    call MPI_ALLREDUCE(mynowe,nowe,1,MPI_integer, &
       MPI_SUM, MPI_COMM_WORLD,ierr)
 
@@ -3970,10 +4127,10 @@ subroutine cint(n)
    totn=rbuf(5)
    ttrap=rbuf(6)
    ptrptmp=rbuf(7)
-   avewe(n) = rbuf(8)/( float(tmm(2)) )
-   !      ke(2,n)=ketemp/( 2.*float(tmm(2))*mims(ns) )
+   avewe(n) = rbuf(8)/( real(tmm(2)) )
+   !      ke(2,n)=ketemp/( 2.*real(tmm(2))*mims(ns) )
    ftrap = ttrap/totn
-   !      nos(2,n)=nostemp/( float(tmm(2)) )
+   !      nos(2,n)=nostemp/( real(tmm(2)) )
 
    call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 
@@ -3982,7 +4139,7 @@ subroutine cint(n)
       MPI_REAL8,MPI_SUM,  &
       MPI_COMM_WORLD,ierr)
    do k = 1,nsubd
-      efle_es(k,n)=rbuf(k)/( float(tmm(2)) )*totvol/vol(k)*cn0e
+      efle_es(k,n)=rbuf(k)/( real(tmm(2)) )*totvol/vol(k)*cn0e
    end do
 
    sbuf(1:nsubd) = myefl_em(1:nsubd)
@@ -3990,7 +4147,7 @@ subroutine cint(n)
       MPI_REAL8,MPI_SUM,  &
       MPI_COMM_WORLD,ierr)
    do k = 1,nsubd
-      efle_em(k,n)=rbuf(k)/( float(tmm(2)) )*totvol/vol(k)*cn0e
+      efle_em(k,n)=rbuf(k)/( real(tmm(2)) )*totvol/vol(k)*cn0e
    end do
 
    sbuf(1:nsubd) = mypfl_es(1:nsubd)
@@ -3998,7 +4155,7 @@ subroutine cint(n)
       MPI_REAL8,MPI_SUM,  &
       MPI_COMM_WORLD,ierr)
    do k = 1,nsubd
-      pfle_es(k,n)=rbuf(k)/( float(tmm(2)) )*totvol/vol(k)*cn0e
+      pfle_es(k,n)=rbuf(k)/( real(tmm(2)) )*totvol/vol(k)*cn0e
    end do
 
    sbuf(1:nsubd) = mypfl_em(1:nsubd)
@@ -4006,12 +4163,16 @@ subroutine cint(n)
       MPI_REAL8,MPI_SUM,  &
       MPI_COMM_WORLD,ierr)
    do k = 1,nsubd
-      pfle_em(k,n)=rbuf(k)/( float(tmm(2)) )*totvol/vol(k)*cn0e
+      pfle_em(k,n)=rbuf(k)/( real(tmm(2)) )*totvol/vol(k)*cn0e
    end do
 
    np_old=mme
-   call init_pmove(z3e,np_old,lz,ierr)
 
+   init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
+   call init_pmove(z3e,np_old,lz,ierr)
+   init_pmove_end_tm = init_pmove_end_tm + MPI_WTIME()
+
+   pmove_start_tm = pmove_start_tm + MPI_WTIME()
    call pmove(x2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
    call pmove(x3e,np_old,np_new,ierr)
@@ -4047,7 +4208,7 @@ subroutine cint(n)
    if (ierr.ne.0) call ppexit
    call pmove(eke,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-
+   pmove_end_tm = pmove_end_tm + MPI_WTIME()
    call end_pmove(ierr)
    mme=np_new
 
@@ -4074,6 +4235,7 @@ subroutine lorentz(ip,n)
    if(ip.eq.0)dtcol = dt/ncol
    vte = sqrt(amie*t0e(nr/2))
    if(rneu==0.0)return
+   lorentz_start_tm = lorentz_start_tm + MPI_WTIME()
    do k = 1,mme
       r=x3e(k)-0.5*lx+lr0
 
@@ -4121,6 +4283,7 @@ subroutine lorentz(ip,n)
       end if
       !         if(myid.eq.master)write(*,*)mue(k),vdum,k,ptch
    end do
+   lorentz_end_tm = lorentz_end_tm + MPI_WTIME()
 
 end subroutine lorentz
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -4159,7 +4322,7 @@ subroutine initialize
       tube_comm,ierr)
 
    totvol = dx*ly*dz*jacp
-   n0=float(tmm(1))/totvol
+   n0=real(tmm(1))/totvol
    n0e=mme*numprocs/totvol
    if(myid==0)then
       write(*,*)'totvol,jacp,dum2=',totvol,jacp,dum2
@@ -4639,11 +4802,11 @@ subroutine jpar0(ip,n,it,itp)
          i=int(xt/dx)
          j=int(yt/dy)
          k=0 !int(z3e(m)/dz)-gclr*kcnt
-         wx0=float(i+1)-xt/dx
+         wx0=real(i+1)-xt/dx
          wx1=1.-wx0
-         wy0=float(j+1)-yt/dy
+         wy0=real(j+1)-yt/dy
          wy1=1.-wy0
-         wz0=float(gclr*kcnt+k+1)-z3e(m)/dz
+         wz0=real(gclr*kcnt+k+1)-z3e(m)/dz
          wz1=1.-wz0
          x000=wx0*wy0*wz0
          x001=wx0*wy0*wz1
@@ -4690,11 +4853,11 @@ subroutine jpar0(ip,n,it,itp)
             j=int(yt/dy)
             k=0 !int(z3e(m)/dz)-gclr*kcnt
 
-            wx0=float(i+1)-xt/dx
+            wx0=real(i+1)-xt/dx
             wx1=1.-wx0
-            wy0=float(j+1)-yt/dy
+            wy0=real(j+1)-yt/dy
             wy1=1.-wy0
-            wz0=float(gclr*kcnt+k+1)-z3e(m)/dz
+            wz0=real(gclr*kcnt+k+1)-z3e(m)/dz
             wz1=1.-wz0
             x000=wx0*wy0*wz0
             x001=wx0*wy0*wz1
@@ -4736,11 +4899,11 @@ subroutine jpar0(ip,n,it,itp)
             j=int(yt/dy)
             k=0 !int(z3e(m)/dz)-gclr*kcnt
 
-            wx0=float(i+1)-xt/dx
+            wx0=real(i+1)-xt/dx
             wx1=1.-wx0
-            wy0=float(j+1)-yt/dy
+            wy0=real(j+1)-yt/dy
             wy1=1.-wy0
-            wz0=float(gclr*kcnt+k+1)-z3e(m)/dz
+            wz0=real(gclr*kcnt+k+1)-z3e(m)/dz
             wz1=1.-wz0
             x000=wx0*wy0*wz0
             x001=wx0*wy0*wz1
@@ -4988,8 +5151,8 @@ subroutine countw(n)
       MPI_SUM, &
       MPI_COMM_WORLD,ierr)
 
-   avwe = avwe/tmm(1)
-   wpbin = wpbin/tmm(1)
+   avwe = avwe/real(tmm(1))
+   wpbin = wpbin/real(tmm(1))
 
    if(myid.eq.0.and.mod(n,xnplt).eq.0)then
       !         write(*,*)'maxw,minw,avwe= ', maxw, minw,avwe
@@ -5038,11 +5201,11 @@ subroutine setw(ip,n)
       i=int(xt/dx)
       j=int(yt/dy)
       k=0 !int(z3e(m)/dz)-gclr*kcnt
-      wx0=float(i+1)-xt/dx
+      wx0=real(i+1)-xt/dx
       wx1=1.-wx0
-      wy0=float(j+1)-yt/dy
+      wy0=real(j+1)-yt/dy
       wy1=1.-wy0
-      wz0=float(gclr*kcnt+k+1)-z3e(m)/dz
+      wz0=real(gclr*kcnt+k+1)-z3e(m)/dz
       wz1=1.-wz0
 
       wght = 1.
@@ -5084,7 +5247,7 @@ subroutine fltx(u,isbl,ism)
             m1=j
             sgny=1.0
          endif
-         ky=sgny*2.0*pi*float(m1)/ly
+         ky=sgny*2.0*pi*real(m1)/ly
          kx = i*pi/lx
          b2 = 0. !xshape**2*kx**2+yshape**2*ky**2
 
@@ -5096,7 +5259,7 @@ subroutine fltx(u,isbl,ism)
          if(onemd==1.and.m1.ne.mlk)filterx(i,j) = 0.0
          !            if(m1>1)filterx(i,j) = 0.0
          if(j==0.and.i<=nzcrt)filterx(i,j) = 0.0
-         if(m1>0.and.m1<nlow)filterx(i,j) = 0.0!2.0/imx*float(m1*m1)/(nlow**2)
+         if(m1>0.and.m1<nlow)filterx(i,j) = 0.0!2.0/imx*real(m1*m1)/(nlow**2)
          if(j==0 .and. ineq0==0)filterx(i,j) = 0.0
       end do
    end do
@@ -5249,7 +5412,7 @@ subroutine fltd(u)
             m1=j
             sgny=1.0
          endif
-         ky=sgny*2.0*pi*float(m1)/ly
+         ky=sgny*2.0*pi*real(m1)/ly
          kx = i*pi/lx
          b2 = xshape**2*kx**2+yshape**2*ky**2
 
@@ -5417,9 +5580,9 @@ subroutine blendf
    enddo
    do j = 0,jm-1
       if(j.ge.(jm/2+1)) then
-         aky(j) = -2.*pi*float(jm-j)/ly
+         aky(j) = -2.*pi*real(jm-j)/ly
       else
-         aky(j) = 2.*pi*float(j)/ly
+         aky(j) = 2.*pi*real(j)/ly
       end if
    enddo
    do j = 0,jm-1
@@ -5432,9 +5595,9 @@ subroutine blendf
       do i = 0,imx-1
          do j = 0,jmx-1
             do k = 0,kmx
-               s1 = float(k)*pi2/kmx/dth1-m
-               s2 = float(k)*pi2/kmx/dth1-m-nb
-               s3 = float(k)*pi2/kmx/dth1-m+nb
+               s1 = real(k)*pi2/kmx/dth1-m
+               s2 = real(k)*pi2/kmx/dth1-m-nb
+               s3 = real(k)*pi2/kmx/dth1-m+nb
                pol(m,i,j,k) = en3(s1)+en3(s2)*pfac(i,j)+en3(s3)/pfac(i,j)
             end do
          end do
@@ -5754,7 +5917,7 @@ subroutine ldel
       MPI_REAL8, &
       MPI_SUM,MPI_COMM_WORLD,ierr)
    if(idg.eq.1)write(*,*)'all reduce'
-   avgv=avgv/float(tmm(1))
+   avgv=avgv/real(tmm(1))
    do m=1,mme
       u2e(m)=u2e(m)-avgv
       x3e(m)=x2e(m)
@@ -5923,7 +6086,7 @@ subroutine avge
    call MPI_ALLREDUCE(myavewe, avwe, &
       1            ,MPI_REAL8,       &
       MPI_SUM,MPI_COMM_WORLD,ierr)
-   avwe = avwe/tmm(1)
+   avwe = avwe/real(tmm(1))
 
    do m=1,mme
       w3e(m) = wght(m)
@@ -6051,7 +6214,7 @@ subroutine avgi(ns)
    call MPI_ALLREDUCE(myavewe, avwi, &
       1                ,MPI_REAL8,       &
       MPI_SUM,MPI_COMM_WORLD,ierr)
-   avwi = avwi/tmm(1)
+   avwi = avwi/real(tmm(1))
 
    do m=1,mme
       w3(ns,m) = wght(m)
@@ -6144,11 +6307,11 @@ subroutine rstpe
       myncell(i,j) = myncell(i,j)+1
       myavwcell(i,j) = myavwcell(i,j)+abs(w3e(m))
       k=0
-      wx(0)=1.-favx+(float(i+1)-xt/dx)*favx
+      wx(0)=1.-favx+(real(i+1)-xt/dx)*favx
       wx(1)=1.-wx(0)
-      wy(0)=1.-favy+(float(j+1)-yt/dy)*favy
+      wy(0)=1.-favy+(real(j+1)-yt/dy)*favy
       wy(1)=1.-wy(0)
-      wz(0)=1.-favz+(float(gclr*kcnt+k+1)-z3e(m)/dz)*favz
+      wz(0)=1.-favz+(real(gclr*kcnt+k+1)-z3e(m)/dz)*favz
       wz(1)=1.-wz(0)
       ie = int(vfac/dvfac)
       il = int((lamb+1.0)/dlamb)
@@ -6157,9 +6320,9 @@ subroutine rstpe
          mynobge = mynobge+1
          goto 100
       end if
-      we(0) = 1.-fave+(float(ie+1)-vfac/dvfac)*fave
+      we(0) = 1.-fave+(real(ie+1)-vfac/dvfac)*fave
       we(1) = 1.-we(0)
-      wp(0) = 1-favl+(float(il+1)-(lamb+1.)/dlamb)*favl
+      wp(0) = 1-favl+(real(il+1)-(lamb+1.)/dlamb)*favl
       wp(1) = 1.-wp(0)
 
       do j1 = 0,1
@@ -6177,7 +6340,7 @@ subroutine rstpe
 
       js = jacp
       jv = sqrt(2.)*vte**3*sqrt(vfac+1.e-3)
-      dum = totvol/tmm(1)/(dx*dy*dz*dvfac*dlamb*js*jv)
+      dum = totvol/real(tmm(1))/(dx*dy*dz*dvfac*dlamb*js*jv)
 
       myng(i,j,ie,il) = myng(i,j,ie,il)+1
       mytotw(i,j,ie,il) = mytotw(i,j,ie,il)+w3e(m)
@@ -6359,11 +6522,11 @@ subroutine rstpe
       j = int(y3e(m)/dy)
       j = min(j,jmx-1)
       k=0
-      wx(0)=1.-favx+(float(i+1)-xt/dx)*favx
+      wx(0)=1.-favx+(real(i+1)-xt/dx)*favx
       wx(1)=1.-wx(0)
-      wy(0)=1.-favy+(float(j+1)-yt/dy)*favy
+      wy(0)=1.-favy+(real(j+1)-yt/dy)*favy
       wy(1)=1.-wy(0)
-      wz(0)=1.-favz+(float(gclr*kcnt+k+1)-z3e(m)/dz)*favz
+      wz(0)=1.-favz+(real(gclr*kcnt+k+1)-z3e(m)/dz)*favz
       wz(1)=1.-wz(0)
       ie = int(vfac/dvfac)
       il = int((lamb+1.0)/dlamb)
@@ -6372,9 +6535,9 @@ subroutine rstpe
          mynobge = mynobge+1
          goto 200
       end if
-      we(0) = 1.-fave+(float(ie+1)-vfac/dvfac)*fave
+      we(0) = 1.-fave+(real(ie+1)-vfac/dvfac)*fave
       we(1) = 1.-we(0)
-      wp(0) = 1-favl+(float(il+1)-(lamb+1.)/dlamb)*favl
+      wp(0) = 1-favl+(real(il+1)-(lamb+1.)/dlamb)*favl
       wp(1) = 1.-wp(0)
 
       do j1 = 0,1
@@ -6419,7 +6582,7 @@ subroutine rstpe
    call MPI_ALLREDUCE(myavewe, avwe, &
       1        ,MPI_REAL8,       &
       MPI_SUM,MPI_COMM_WORLD,ierr)
-   avwe = avwe/tmm(1)
+   avwe = avwe/real(tmm(1))
 
    call MPI_ALLREDUCE(mydwcell, dwcell, &
       imx*jmx,MPI_REAL8,       &
@@ -6589,10 +6752,10 @@ subroutine gkpsL(nstep,ip)
                   m1=m
                   sgny=1.
                endif
-               akx(l) = sgnx*2.*pi*float(l1)/lx
-               aky(m) = sgny*2.*pi*float(m1)/ly
-               ky=sgny*2.*pi*float(m1)/ly
-               kx=sgnx*2.*pi*float(l1)/lx
+               akx(l) = sgnx*2.*pi*real(l1)/lx
+               aky(m) = sgny*2.*pi*real(m1)/ly
+               ky=sgny*2.*pi*real(m1)/ly
+               kx=sgnx*2.*pi*real(l1)/lx
 
                bf=bfldp
                b2=(xshape*xshape*kx*kx + yshape*yshape*ky*ky)
@@ -6624,7 +6787,7 @@ subroutine gkpsL(nstep,ip)
                   enddo
                   gamphi = gamphi + cn0e*gn0e(l)/t0e(1)*(1-gam0_e)
                   formphi(l,m,n)=1.0/(fradi*xn0e(nr/2)*cn0e/t0e(nr/2)+gamphi + debye*kperp2) & !yjhu fradi term is due to the split-weight scheme
-                     /float(imx*jmx)
+                     /real(imx*jmx)
                end if
                if(l1.eq.0.and.m1.eq.0)formphi(l,m,n)=0.
                if(m1>0.and.m1<nlow)formphi(l,m,n)=0.
@@ -6636,7 +6799,7 @@ subroutine gkpsL(nstep,ip)
                   if(l1.eq.0)then
                      akx2(l,n) = 0.
                   else
-                     akx2(l,n) = exp(-b2)/(1.-gam0(1))/float(km)
+                     akx2(l,n) = exp(-b2)/(1.-gam0(1))/real(km)
                   end if
                end if
             enddo
@@ -6889,10 +7052,10 @@ subroutine ezampL(nstep,ip)
                   m1=m
                   sgny=1.
                endif
-               akx(l) = sgnx*2.*pi*float(l1)/lx
-               aky(m) = sgny*2.*pi*float(m1)/ly
-               ky=sgny*2.*pi*float(m1)/ly
-               kx=sgnx*2.*pi*float(l1)/lx
+               akx(l) = sgnx*2.*pi*real(l1)/lx
+               aky(m) = sgny*2.*pi*real(m1)/ly
+               ky=sgny*2.*pi*real(m1)/ly
+               kx=sgnx*2.*pi*real(l1)/lx
 
                bf=bfldp
                b=(kx*kx*grp**2 + ky*ky*(dydrp**2*grp**2+(lr0/q0*qhatp*gthp)**2 &
@@ -6903,7 +7066,7 @@ subroutine ezampL(nstep,ip)
                !                  call srcbes(b,gam0,gam1)
                !  formfactor in ezamp
                formapa(l,m,n)=exp(-b2)*beta/((b+xfrac*beta*amie*gn0e(l)*cn0e+beta*q(1)*q(1)/mims(1)*gn0s(1,l)*cn0s(1)*isiap+1.e-10) &
-                  *float(imx*jmx))
+                  *real(imx*jmx))
                if(l1.eq.0.and.m1.eq.0)formapa(l,m,n)=0.
                if(m1>0.and.m1<nlow)formapa(l,m,n)=0.
                if(abs(ky).gt.kycut)formapa(l,m,n) = 0.
@@ -7218,8 +7381,8 @@ subroutine flty(u,isbl)
             sgny=1.
          endif
 
-         ky=sgny*2.0*pi*float(m1)/ly
-         kx=sgnx*2.0*pi*float(l1)/lx
+         ky=sgny*2.0*pi*real(m1)/ly
+         kx=sgnx*2.0*pi*real(l1)/lx
          b2 = xshape**2*kx**2+yshape**2*ky**2
 
          filterx(i,j) = 1.0/(imx*jmx)

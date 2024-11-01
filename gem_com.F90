@@ -32,6 +32,23 @@ module gem_com
    REAL :: starttm,lasttm,tottm
    real :: aux1(50000),aux2(20000)
    real,dimension(:),allocatable :: workx,worky,workz
+
+   real :: tot_tm, accumulate_start_tm, accumulate_end_tm, accumulate_tot_tm
+   real :: ampere_start_tm, ampere_end_tm, ampere_tot_tm
+   real :: poisson_start_tm, poisson_end_tm, poisson_tot_tm
+   real :: field_start_tm, field_end_tm, field_tot_tm
+   real :: diagnose_start_tm, diagnose_end_tm, diagnose_tot_tm
+   real :: reporter_start_tm, reporter_end_tm, reporter_tot_tm
+   real :: push_start_tm, push_end_tm, push_tot_tm
+   real :: ppush_start_tm, ppush_end_tm, ppush_tot_tm
+   real :: cpush_start_tm, cpush_end_tm, cpush_tot_tm
+   real :: pint_start_tm, pint_end_tm, pint_tot_tm
+   real :: cint_start_tm, cint_end_tm, cint_tot_tm
+   real :: lorentz_start_tm, lorentz_end_tm, lorentz_tot_tm
+   real :: grid1_ion_start_tm, grid1_ion_end_tm, grid1_ion_tot_tm
+   real :: grid1_electron_start_tm, grid1_electron_end_tm, grid1_electron_tot_tm
+   real :: init_pmove_start_tm, init_pmove_end_tm, init_pmove_tot_tm
+   real :: pmove_start_tm, pmove_end_tm, pmove_tot_tm
    complex,dimension(:),allocatable :: tmpx
    complex,dimension(:),allocatable :: tmpy
    complex,dimension(:),allocatable :: tmpz
@@ -46,7 +63,8 @@ module gem_com
 
    integer :: mme,mmb
    REAL, dimension(:,:),allocatable :: rwx,rwy
-   INTEGER,dimension(:),allocatable :: mm,tmm,lr
+   INTEGER,dimension(:),allocatable :: mm,lr
+   INTEGER*8,dimension(:),allocatable :: tmm
    REAL,dimension(:),allocatable :: tets,mims,q
    REAL,dimension(:),allocatable :: kapn, kapt
    INTEGER :: timestep,im,jm,km,mykm,iseed,nrst,nfreq,isft,mynf,ifskp,iphbf,iapbf,idpbf
