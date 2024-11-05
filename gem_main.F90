@@ -651,6 +651,7 @@ subroutine init
       write(*,*) 'Gyrokrs = ', 2*pi*sqrt(mims(1))*sqrt(t0e(nr/2))/ly/bunit
    end if
 
+!acc update device(lr,mims,q)
 !$acc update device( bfld,qhat,radius,gr,gth,grdgt,grcgt)
 !$acc update device( gxdgy,dydr,dbdr,dbdth,jacob)
 !$acc update device( yfn,hght,thflx,psi) 
@@ -704,9 +705,9 @@ subroutine ppush(n,ns)
    ppush_start_tm = ppush_start_tm+MPI_WTIME()
    !$acc parallel loop private(rhox, rhoy)
    do m=1,mm(ns)
-      r=x2(ns,m)-0.5*lx+lr0
-      k = int(z2(ns,m)/delz)
-      wz0 = ((k+1)*delz-z2(ns,m))/delz
+      r=x2(m,ns)-0.5*lx+lr0
+      k = int(z2(m,ns)/delz)
+      wz0 = ((k+1)*delz-z2(m,ns))/delz
       wz1 = 1-wz0
       th = wz0*thfnz(k)+wz1*thfnz(k+1)
 
@@ -755,11 +756,12 @@ subroutine ppush(n,ns)
       psip2p = wx0*psip2(i)+wx1*psip2(i+1)
       dipdrp = wx0*dipdr(i)+wx1*dipdr(i+1)
       b=1.-tor+tor*bfldp
-      pzp = mims(ns)*u2(ns,m)/b-q(ns)*psp/br0
+      pzp = mims(ns)*u2(m,ns)/b-q(ns)*psp/br0
 
-      rhog=sqrt(2.*b*mu(ns,m)*mims(ns))/(q(ns)*b)*iflr
+      rhog=sqrt(2.*b*mu(m,ns)*mims(ns))/(q(ns)*b)*iflr
 
       gdum = ran2(iseed)*pi2
+      !$acc loop seq
       do l=1,lr(ns) !yjhu added, March 8, 2019
          gphase = l*pi2/lr(ns)+gdum
          rhox(l) = cos(gphase)*rhog*grp
@@ -780,8 +782,8 @@ subroutine ppush(n,ns)
 
       !$acc loop seq
       do l=1,lr(ns) !yjhu added
-         xs=x2(ns,m)+rhox(l) !rwx(1,l)*rhog
-         yt=y2(ns,m)+rhoy(l) !(rwy(1,l)+sz*rwx(1,l))*rhog
+         xs=x2(m,ns)+rhox(l) !rwx(1,l)*rhog
+         yt=y2(m,ns)+rhoy(l) !(rwy(1,l)+sz*rwx(1,l))*rhog
 
          xt=modulo(xs,lx)
          yt=modulo(yt,ly)
@@ -790,7 +792,7 @@ subroutine ppush(n,ns)
 
          i=int(xt/dx+0.5)
          j=int(yt/dy+0.5)
-         k=int(z2(ns,m)/dz+0.5)-gclr*kcnt
+         k=int(z2(m,ns)/dz+0.5)-gclr*kcnt
 
          exp1=exp1 + ex(i,j,k)
          eyp=eyp + ey(i,j,k)
@@ -819,13 +821,13 @@ subroutine ppush(n,ns)
       aparp  = aparp/lr(ns)
 
       !
-      vfac = 0.5*(mims(ns)*u2(ns,m)**2 + 2.*mu(ns,m)*b)
+      vfac = 0.5*(mims(ns)*u2(m,ns)**2 + 2.*mu(m,ns)*b)
       vp0 = 1./b**2*lr0/q0*qhatp*fp/radiusp*grcgtp
       vp0 = vp0*vncp*vexbsw
 
-      vpar = u2(ns,m)-q(ns)/mims(ns)*aparp*nonlin(ns)*0.
+      vpar = u2(m,ns)-q(ns)/mims(ns)*aparp*nonlin(ns)*0.
       bstar = b*(1+mims(ns)*vpar/(q(ns)*b)*bdcrvbp)
-      enerb=(mu(ns,m)+mims(ns)*vpar*vpar/b)/q(ns)*b/bstar*tor
+      enerb=(mu(m,ns)+mims(ns)*vpar*vpar/b)/q(ns)*b/bstar*tor
 
       kap = kapnp - (1.5-vfac/ter)*kaptp-vpar*mims(ns)/ter*vparspp*vparsw
       dum1 = 1./b*lr0/q0*qhatp*fp/radiusp*grcgtp
@@ -842,8 +844,8 @@ subroutine ppush(n,ns)
          -1./b**2*q0*br0*fp/radiusp*grcgtp*vncp*vexbsw/jfnp &
          -dipdrp/radiusp*mims(ns)*vpar**2/(q(ns)*bstar*b)*q0*br0*grcgtp/jfnp
 
-      pzd0 = tor*(-mu(ns,m)/mims(ns)/radiusp/bfldp*psipp*dbdtp*grcgtp)*b/bstar &
-         +mu(ns,m)*vpar/(q(ns)*bstar*b)*dipdrp/radiusp*dbdtp*grcgtp
+      pzd0 = tor*(-mu(m,ns)/mims(ns)/radiusp/bfldp*psipp*dbdtp*grcgtp)*b/bstar &
+         +mu(m,ns)*vpar/(q(ns)*bstar*b)*dipdrp/radiusp*dbdtp*grcgtp
       pzdot = pzd0 + (q(ns)/mims(ns)*ezp*q0*br0/radiusp/b*psipp*grcgtp/jfnp  &
          +q(ns)/mims(ns)*(-xdot*delbyp+ydot*delbxp+zdot*dadzp))*ipara
 
@@ -852,62 +854,62 @@ subroutine ppush(n,ns)
          +q(ns)*vpar*(-xdot*delbyp+ydot*delbxp+zdot*dadzp)    &
          -q(ns)*vpar*delbxp*vp0
 
-      x3(ns,m) = x2(ns,m) + 0.5*dt*xdot
-      y3(ns,m) = y2(ns,m) + 0.5*dt*ydot
-      z3(ns,m) = z2(ns,m) + 0.5*dt*zdot
-      u3(ns,m) = u2(ns,m) + 0.5*dt*pzdot
+      x3(m,ns) = x2(m,ns) + 0.5*dt*xdot
+      y3(m,ns) = y2(m,ns) + 0.5*dt*ydot
+      z3(m,ns) = z2(m,ns) + 0.5*dt*zdot
+      u3(m,ns) = u2(m,ns) + 0.5*dt*pzdot
 
-      dum = 1-w2(ns,m)*nonlin(ns)*0.
+      dum = 1-w2(m,ns)*nonlin(ns)*0.
       if(ildu.eq.1)dum = (tgis(ns)/ter)**1.5*exp(vfac*(1/tgis(ns)-1./ter))
       vxdum = (eyp/b+vpar/b*delbxp)*dum1
       !         vxdum = eyp+vpar/b*delbxp
-      w3(ns,m)=w2(ns,m) + 0.5*dt*(vxdum*kap + edot/ter)*dum*xnp
+      w3(m,ns)=w2(m,ns) + 0.5*dt*(vxdum*kap + edot/ter)*dum*xnp
 
-      !         if(x3(ns,m)>lx .or. x3(ns,m)<0.)w3(ns,m) = 0.
+      !         if(x3(m,ns)>lx .or. x3(m,ns)<0.)w3(m,ns) = 0.
 
 
       if(itube==1)go to 333
-      if(abs(vfac-eki(ns,m))>0.2*eki(ns,m))then
+      if(abs(vfac-eki(m,ns))>0.2*eki(m,ns))then
          mynopi = mynopi+1
-         w3(ns,m) = 0.
-         w2(ns,m) = 0.
+         w3(m,ns) = 0.
+         w2(m,ns) = 0.
       end if
 
 333   continue
-      laps=anint((z3(ns,m)/lz)-.5)*(1-peritr)
-      r=x3(ns,m)-0.5*lx+lr0
+      laps=anint((z3(m,ns)/lz)-.5)*(1-peritr)
+      r=x3(m,ns)-0.5*lx+lr0
       i = int((r-rin)/dr)
       i = min(i,nr-1)
       i = max(i,0)
       wx0 = (rin+(i+1)*dr-r)/dr
       wx1 = 1.-wx0
       qr = wx0*sf(i)+wx1*sf(i+1)
-!!$     y3(ns,m)=mod(y3(ns,m)-laps*2*pi*qr*lr0/q0*sign(1.0,q0)+8000.*ly,ly)
-!!$     y3(ns,m) = min(y3(ns,m),ly-1.0e-8)
-      y3(ns,m)=modulo(y3(ns,m)-laps*2*pi*qr*lr0/q0*sign(1.0,q0),ly)
+!!$     y3(m,ns)=mod(y3(m,ns)-laps*2*pi*qr*lr0/q0*sign(1.0,q0)+8000.*ly,ly)
+!!$     y3(m,ns) = min(y3(m,ns),ly-1.0e-8)
+      y3(m,ns)=modulo(y3(m,ns)-laps*2*pi*qr*lr0/q0*sign(1.0,q0),ly)
 
-      if(x3(ns,m)>lx.and.iperidf==0)then
-         x3(ns,m) = lx-1.e-8
-         z3(ns,m)=lz-z3(ns,m)
-         x2(ns,m) = x3(ns,m)
-         z2(ns,m) = z3(ns,m)
-         w2(ns,m) = 0.
-         w3(ns,m) = 0.
+      if(x3(m,ns)>lx.and.iperidf==0)then
+         x3(m,ns) = lx-1.e-8
+         z3(m,ns)=lz-z3(m,ns)
+         x2(m,ns) = x3(m,ns)
+         z2(m,ns) = z3(m,ns)
+         w2(m,ns) = 0.
+         w3(m,ns) = 0.
       end if
-      if(x3(ns,m)<0..and.iperidf==0)then
-         x3(ns,m) = 1.e-8
-         z3(ns,m)=lz-z3(ns,m)
-         x2(ns,m) = x3(ns,m)
-         z2(ns,m) = z3(ns,m)
-         w2(ns,m) = 0.
-         w3(ns,m) = 0.
+      if(x3(m,ns)<0..and.iperidf==0)then
+         x3(m,ns) = 1.e-8
+         z3(m,ns)=lz-z3(m,ns)
+         x2(m,ns) = x3(m,ns)
+         z2(m,ns) = z3(m,ns)
+         w2(m,ns) = 0.
+         w3(m,ns) = 0.
       end if
-!!$     z3(ns,m)=mod(z3(ns,m)+8.*lz,lz)
-!!$     x3(ns,m)=mod(x3(ns,m)+800.*lx,lx)
-!!$     x3(ns,m) = min(x3(ns,m),lx-1.0e-8)
-!!$     z3(ns,m) = min(z3(ns,m),lz-1.0e-8)
-      z3(ns,m)=modulo(z3(ns,m),lz)
-      x3(ns,m)=modulo(x3(ns,m),lx)
+!!$     z3(m,ns)=mod(z3(m,ns)+8.*lz,lz)
+!!$     x3(m,ns)=mod(x3(m,ns)+800.*lx,lx)
+!!$     x3(m,ns) = min(x3(m,ns),lx-1.0e-8)
+!!$     z3(m,ns) = min(z3(m,ns),lz-1.0e-8)
+      z3(m,ns)=modulo(z3(m,ns),lz)
+      x3(m,ns)=modulo(x3(m,ns),lx)
 
    enddo
    ppush_end_tm = ppush_end_tm + MPI_WTIME()
@@ -917,34 +919,34 @@ subroutine ppush(n,ns)
    np_old=mm(ns)
 
    init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
-   call init_pmove(z3(ns,:),np_old,lz,ierr)
+   call test_init_pmove(z3(:,ns),np_old,lz,ierr)
    init_pmove_end_tm = init_pmove_end_tm + MPI_WTIME()
 
    pmove_start_tm = pmove_start_tm + MPI_WTIME()
-   call pmove(x2(ns,:),np_old,np_new,ierr)
+   call test_pmove(x2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(x3(ns,:),np_old,np_new,ierr)
+   call test_pmove(x3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y2(ns,:),np_old,np_new,ierr)
+   call test_pmove(y2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y3(ns,:),np_old,np_new,ierr)
+   call test_pmove(y3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z2(ns,:),np_old,np_new,ierr)
+   call test_pmove(z2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z3(ns,:),np_old,np_new,ierr)
+   call test_pmove(z3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u2(ns,:),np_old,np_new,ierr)
+   call test_pmove(u2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u3(ns,:),np_old,np_new,ierr)
+   call test_pmove(u3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w2(ns,:),np_old,np_new,ierr)
+   call test_pmove(w2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w3(ns,:),np_old,np_new,ierr)
+   call test_pmove(w3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(mu(ns,:),np_old,np_new,ierr)
+   call test_pmove(mu(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
-   call pmove(eki(ns,:),np_old,np_new,ierr)
+   call test_pmove(eki(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
    pmove_end_tm = pmove_end_tm + MPI_WTIME()
    call end_pmove(ierr)
@@ -1001,10 +1003,10 @@ subroutine cpush(n,ns)
    cpush_start_tm = cpush_start_tm + MPI_WTIME()
    !$acc parallel loop private(rhox, rhoy)
    do m=1,mm(ns)
-      r=x3(ns,m)-0.5*lx+lr0
+      r=x3(m,ns)-0.5*lx+lr0
 
-      k = int(z3(ns,m)/delz)
-      wz0 = ((k+1)*delz-z3(ns,m))/delz
+      k = int(z3(m,ns)/delz)
+      wz0 = ((k+1)*delz-z3(m,ns))/delz
       wz1 = 1-wz0
       th = wz0*thfnz(k)+wz1*thfnz(k+1)
 
@@ -1051,13 +1053,14 @@ subroutine cpush(n,ns)
       b=1.-tor+tor*bfldp
       psip2p = wx0*psip2(i)+wx1*psip2(i+1)
       dipdrp = wx0*dipdr(i)+wx1*dipdr(i+1)
-      pzp = mims(ns)*u3(ns,m)/b-q(ns)*psp/br0
+      pzp = mims(ns)*u3(m,ns)/b-q(ns)*psp/br0
       vncp = wx0*phincp(i)+wx1*phincp(i+1)
       vparspp = wx0*vparsp(ns,i)+wx1*vparsp(ns,i+1)
 
-      rhog=sqrt(2.*b*mu(ns,m)*mims(ns))/(q(ns)*b)*iflr
+      rhog=sqrt(2.*b*mu(m,ns)*mims(ns))/(q(ns)*b)*iflr
 
       gdum = ran2(iseed)*pi2
+      !$acc loop seq
       do l=1,lr(ns) !yjhu added, March 8, 2019
          gphase = l*pi2/lr(ns)+gdum
          rhox(l) = cos(gphase)*rhog*grp
@@ -1076,15 +1079,15 @@ subroutine cpush(n,ns)
 
      !$acc loop seq
       do l=1,lr(ns)
-         xs=x3(ns,m)+rhox(l) !rwx(1,l)*rhog
-         yt=y3(ns,m)+rhoy(l) !(rwy(1,l)+sz*rwx(1,l))*rhog
+         xs=x3(m,ns)+rhox(l) !rwx(1,l)*rhog
+         yt=y3(m,ns)+rhoy(l) !(rwy(1,l)+sz*rwx(1,l))*rhog
 
          xt=modulo(xs,lx)
          yt=modulo(yt,ly)
 
          i=int(xt/dx+0.5)
          j=int(yt/dy+0.5)
-         k=int(z3(ns,m)/dz+0.5)-gclr*kcnt
+         k=int(z3(m,ns)/dz+0.5)-gclr*kcnt
 
          exp1=exp1 + ex(i,j,k)
          eyp=eyp + ey(i,j,k)
@@ -1113,13 +1116,13 @@ subroutine cpush(n,ns)
       dadzp  = dadzp/lr(ns)
       aparp  = aparp/lr(ns)
 
-      vfac = 0.5*(mims(ns)*u3(ns,m)**2 + 2.*mu(ns,m)*b)
+      vfac = 0.5*(mims(ns)*u3(m,ns)**2 + 2.*mu(m,ns)*b)
       vp0 = 1./b**2*lr0/q0*qhatp*fp/radiusp*grcgtp
       vp0 = vp0*vncp*vexbsw
 
-      vpar = u3(ns,m)-q(ns)/mims(ns)*aparp*nonlin(ns)*0.
+      vpar = u3(m,ns)-q(ns)/mims(ns)*aparp*nonlin(ns)*0.
       bstar = b*(1+mims(ns)*vpar/(q(ns)*b)*bdcrvbp)
-      enerb=(mu(ns,m)+mims(ns)*vpar*vpar/b)/q(ns)*b/bstar*tor
+      enerb=(mu(m,ns)+mims(ns)*vpar*vpar/b)/q(ns)*b/bstar*tor
 
       kap = kapnp - (1.5-vfac/ter)*kaptp-vpar*mims(ns)/ter*vparspp*vparsw
       dum1 = 1./b*lr0/q0*qhatp*fp/radiusp*grcgtp
@@ -1136,8 +1139,8 @@ subroutine cpush(n,ns)
          -1./b**2*q0*br0*fp/radiusp*grcgtp*vncp*vexbsw/jfnp &
          -dipdrp/radiusp*mims(ns)*vpar**2/(q(ns)*bstar*b)*q0*br0*grcgtp/jfnp
 
-      pzd0 = tor*(-mu(ns,m)/mims(ns)/radiusp/bfldp*psipp*dbdtp*grcgtp)*b/bstar &
-         +mu(ns,m)*vpar/(q(ns)*bstar*b)*dipdrp/radiusp*dbdtp*grcgtp
+      pzd0 = tor*(-mu(m,ns)/mims(ns)/radiusp/bfldp*psipp*dbdtp*grcgtp)*b/bstar &
+         +mu(m,ns)*vpar/(q(ns)*bstar*b)*dipdrp/radiusp*dbdtp*grcgtp
       pzdot = pzd0 + (q(ns)/mims(ns)*ezp*q0*br0/radiusp/b*psipp*grcgtp/jfnp  &
          +q(ns)/mims(ns)*(-xdot*delbyp+ydot*delbxp+zdot*dadzp))*ipara
 
@@ -1146,61 +1149,61 @@ subroutine cpush(n,ns)
          +q(ns)*vpar*(-xdot*delbyp+ydot*delbxp+zdot*dadzp)   &
          -q(ns)*vpar*delbxp*vp0
 
-      x3(ns,m) = x2(ns,m) + dt*xdot
-      y3(ns,m) = y2(ns,m) + dt*ydot
-      z3(ns,m) = z2(ns,m) + dt*zdot
-      u3(ns,m) = u2(ns,m) + dt*pzdot
+      x3(m,ns) = x2(m,ns) + dt*xdot
+      y3(m,ns) = y2(m,ns) + dt*ydot
+      z3(m,ns) = z2(m,ns) + dt*zdot
+      u3(m,ns) = u2(m,ns) + dt*pzdot
 
-      dum = 1-w3(ns,m)*nonlin(ns)*0.
+      dum = 1-w3(m,ns)*nonlin(ns)*0.
       if(ildu.eq.1)dum = (tgis(ns)/ter)**1.5*exp(vfac*(1/tgis(ns)-1./ter))
       !         vxdum = eyp+vpar/b*delbxp
       vxdum = (eyp/b+vpar/b*delbxp)*dum1
-      w3old = w3(ns,m)
-      w3(ns,m) = w2(ns,m) + dt*(vxdum*kap+edot/ter)*dum*xnp
+      w3old = w3(m,ns)
+      w3(m,ns) = w2(m,ns) + dt*(vxdum*kap+edot/ter)*dum*xnp
 
-      if(abs(w3(ns,m)).gt.0.1.and.nonlin(ns)==1)then
-         w3(ns,m) = 0.
-         w2(ns,m) = 0.
+      if(abs(w3(m,ns)).gt.0.1.and.nonlin(ns)==1)then
+         w3(m,ns) = 0.
+         w2(m,ns) = 0.
       end if
 
 
-      laps=anint((z3(ns,m)/lz)-.5)*(1-peritr)
-      r=x3(ns,m)-0.5*lx+lr0
+      laps=anint((z3(m,ns)/lz)-.5)*(1-peritr)
+      r=x3(m,ns)-0.5*lx+lr0
       i = int((r-rin)/dr)
       i = min(i,nr-1)
       i = max(i,0)
       wx0 = (rin+(i+1)*dr-r)/dr
       wx1 = 1.-wx0
       qr = wx0*sf(i)+wx1*sf(i+1)
-!!$     y3(ns,m)=mod(y3(ns,m)-laps*2*pi*qr*lr0/q0*sign(1.0,q0)+8000.*ly,ly)
-!!$     y3(ns,m) = min(y3(ns,m),ly-1.0e-8)
-      y3(ns,m)=modulo(y3(ns,m)-laps*2*pi*qr*lr0/q0*sign(1.0,q0),ly)
+!!$     y3(m,ns)=mod(y3(m,ns)-laps*2*pi*qr*lr0/q0*sign(1.0,q0)+8000.*ly,ly)
+!!$     y3(m,ns) = min(y3(m,ns),ly-1.0e-8)
+      y3(m,ns)=modulo(y3(m,ns)-laps*2*pi*qr*lr0/q0*sign(1.0,q0),ly)
 
-      if(x3(ns,m)>lx.and.iperidf==0)then
-         x3(ns,m) = lx-1.e-8
-         z3(ns,m)=lz-z3(ns,m)
-         x2(ns,m) = x3(ns,m)
-         z2(ns,m) = z3(ns,m)
-         w2(ns,m) = 0.
-         w3(ns,m) = 0.
+      if(x3(m,ns)>lx.and.iperidf==0)then
+         x3(m,ns) = lx-1.e-8
+         z3(m,ns)=lz-z3(m,ns)
+         x2(m,ns) = x3(m,ns)
+         z2(m,ns) = z3(m,ns)
+         w2(m,ns) = 0.
+         w3(m,ns) = 0.
       end if
-      if(x3(ns,m)<0..and.iperidf==0)then
-         x3(ns,m) = 1.e-8
-         z3(ns,m)=lz-z3(ns,m)
-         x2(ns,m) = x3(ns,m)
-         z2(ns,m) = z3(ns,m)
-         w2(ns,m) = 0.
-         w3(ns,m) = 0.
+      if(x3(m,ns)<0..and.iperidf==0)then
+         x3(m,ns) = 1.e-8
+         z3(m,ns)=lz-z3(m,ns)
+         x2(m,ns) = x3(m,ns)
+         z2(m,ns) = z3(m,ns)
+         w2(m,ns) = 0.
+         w3(m,ns) = 0.
       end if
-!!$     z3(ns,m)=mod(z3(ns,m)+8.*lz,lz)
-!!$     x3(ns,m)=mod(x3(ns,m)+800.*lx,lx)
-!!$     x3(ns,m) = min(x3(ns,m),lx-1.0e-8)
-!!$     z3(ns,m) = min(z3(ns,m),lz-1.0e-8)
-      z3(ns,m)=modulo(z3(ns,m),lz)
-      x3(ns,m)=modulo(x3(ns,m),lx)
+!!$     z3(m,ns)=mod(z3(m,ns)+8.*lz,lz)
+!!$     x3(m,ns)=mod(x3(m,ns)+800.*lx,lx)
+!!$     x3(m,ns) = min(x3(m,ns),lx-1.0e-8)
+!!$     z3(m,ns) = min(z3(m,ns),lz-1.0e-8)
+      z3(m,ns)=modulo(z3(m,ns),lz)
+      x3(m,ns)=modulo(x3(m,ns),lx)
 
       !     particle diagnostics done here because info is available...
-      k = int(x3(ns,m)/(lx/nsubd))
+      k = int(x3(m,ns)/(lx/nsubd))
       k = min(k,nsubd-1)
       k = k+1
       !$acc atomic update
@@ -1212,18 +1215,18 @@ subroutine cpush(n,ns)
       !$acc atomic update
       myefl_em(k)=myefl_em(k) + vfac*w3old*(vpar*delbxp/b)
       !$acc atomic update
-      myke=myke + vfac*w3(ns,m)
+      myke=myke + vfac*w3(m,ns)
       !$acc atomic update
-      mynos=mynos + w3(ns,m)
+      mynos=mynos + w3(m,ns)
       !$acc atomic update
-      myavewi = myavewi+abs(w3(ns,m))
+      myavewi = myavewi+abs(w3(m,ns))
 
       !     xn+1 becomes xn...
-      u2(ns,m)=u3(ns,m)
-      x2(ns,m)=x3(ns,m)
-      y2(ns,m)=y3(ns,m)
-      z2(ns,m)=z3(ns,m)
-      w2(ns,m)=w3(ns,m)
+      u2(m,ns)=u3(m,ns)
+      x2(m,ns)=x3(m,ns)
+      y2(m,ns)=y3(m,ns)
+      z2(m,ns)=z3(m,ns)
+      w2(m,ns)=w3(m,ns)
 
       !     100     continue
    enddo
@@ -1286,34 +1289,34 @@ subroutine cpush(n,ns)
    np_old=mm(ns)
    call MPI_BARRIER(MPI_COMM_WORLD,ierr)
    init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
-   call init_pmove(z3(ns,:),np_old,lz,ierr)
+   call test_init_pmove(z3(:,ns),np_old,lz,ierr)
    init_pmove_end_tm = init_pmove_end_tm + MPI_WTIME()
    
    pmove_start_tm = pmove_start_tm + MPI_WTIME()
-   call pmove(x2(ns,:),np_old,np_new,ierr)
+   call test_pmove(x2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(x3(ns,:),np_old,np_new,ierr)
+   call test_pmove(x3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y2(ns,:),np_old,np_new,ierr)
+   call test_pmove(y2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y3(ns,:),np_old,np_new,ierr)
+   call test_pmove(y3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z2(ns,:),np_old,np_new,ierr)
+   call test_pmove(z2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z3(ns,:),np_old,np_new,ierr)
+   call test_pmove(z3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u2(ns,:),np_old,np_new,ierr)
+   call test_pmove(u2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u3(ns,:),np_old,np_new,ierr)
+   call test_pmove(u3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w2(ns,:),np_old,np_new,ierr)
+   call test_pmove(w2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w3(ns,:),np_old,np_new,ierr)
+   call test_pmove(w3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(mu(ns,:),np_old,np_new,ierr)
+   call test_pmove(mu(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
-   call pmove(eki(ns,:),np_old,np_new,ierr)
+   call test_pmove(eki(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
    pmove_end_tm = pmove_end_tm + MPI_WTIME()
@@ -1395,10 +1398,10 @@ subroutine grid1(ip,n)
       do m=1,mm(ns)
 !yjhu        dv=real(lr(1))*(dx*dy*dz)
          dv=real(lr(ns))*(dx*dy*dz) !yjhu added
-         r=x3(ns,m)-0.5*lx+lr0
+         r=x3(m,ns)-0.5*lx+lr0
 
-         k = int(z3(ns,m)/delz)
-         wz0 = ((k+1)*delz-z3(ns,m))/delz
+         k = int(z3(m,ns)/delz)
+         wz0 = ((k+1)*delz-z3(m,ns))/delz
          wz1 = 1-wz0
          th = wz0*thfnz(k)+wz1*thfnz(k+1)
 
@@ -1432,31 +1435,32 @@ subroutine grid1(ip,n)
          !         b=1.-lr0/br0*cost
          b=1.-tor+tor*bfldp
 
-         rhog=sqrt(2.*b*mu(ns,m)*mims(ns))/(q(ns)*b)*iflr
+         rhog=sqrt(2.*b*mu(m,ns)*mims(ns))/(q(ns)*b)*iflr
 
          gdum = ran2(iseed)*pi2
+         !$acc loop seq
          do l=1,lr(ns) !yjhu added, March 8, 2019
             gphase = l*pi2/lr(ns)+gdum
             rhox(l) = cos(gphase)*rhog*grp
             rhoy(l) = cos(gphase)*rhog*gxdgyp/grp+sin(gphase)*rhog/b/grp*fp/radiusp*lr0/q0*qhatp*grcgtp
          enddo
 
-         vfac=0.5*(mims(ns)*u3(ns,m)**2 + 2.*mu(ns,m)*b )
-         wght=w3(ns,m)/dv
+         vfac=0.5*(mims(ns)*u3(m,ns)**2 + 2.*mu(m,ns)*b )
+         wght=w3(m,ns)/dv
 
-         vpar = u3(ns,m) !linearly correct
+         vpar = u3(m,ns) !linearly correct
 
          !$acc loop seq
          do l=1,lr(ns)
-            xt=x3(ns,m)+rhox(l) !rwx(1,l)*rhog
-            yt=y3(ns,m)+rhoy(l) !(rwy(1,l)+sz*rwx(1,l))*rhog
+            xt=x3(m,ns)+rhox(l) !rwx(1,l)*rhog
+            yt=y3(m,ns)+rhoy(l) !(rwy(1,l)+sz*rwx(1,l))*rhog
 
             xt=modulo(xt,lx)
             yt=modulo(yt,ly)
 
             i=int(xt/dx+0.5)
             j=int(yt/dy+0.5)
-            k=int(z3(ns,m)/dz+0.5)-gclr*kcnt
+            k=int(z3(m,ns)/dz+0.5)-gclr*kcnt
 
             !$acc atomic update
             myden(i,j,k) = myden(i,j,k) + wght
@@ -1519,7 +1523,7 @@ subroutine grid1(ip,n)
    myupar = 0.
    if(idg.eq.1)write(*,*)'enter electron grid1'
    grid1_electron_start_tm = grid1_electron_start_tm + MPI_WTIME()
-   !$acc parallel loop
+   !$acc parallel loop private(rhox,rhoy)
    do m=1,mme
       r=x3e(m)-0.5*lx+lr0
 
@@ -1562,6 +1566,7 @@ subroutine grid1(ip,n)
          rhog=sqrt(2.*b*mue3(m)*emass)/(b) !yjhu
          !write(*,*) 'rhoge=', rhog
          gdum = ran2(iseed)*pi2
+         !$acc loop seq
          do l=1,lr_e !yjhu added, March 8, 2019
             gphase = l*pi2/lr_e+gdum
             rhox(l) = cos(gphase)*rhog*grp
@@ -1569,14 +1574,18 @@ subroutine grid1(ip,n)
          enddo
       else
          lr_e=1
-         rhox=0.0
-         rhoy=0.0
+         !$acc loop seq
+         do l=1,lr_e
+            rhox(l) = 0.0
+            rhoy(l) = 0.0
+         enddo
       endif
 !yjhu     dv=(dx*dy*dz)
       dv=(dx*dy*dz)*lr_e !yjhu
       wght=w3e(m)/dv
       vpar = u3e(m) !linearly correct
       !         if(abs(vpar/vte).gt.vcut)wght = 0.
+      !$acc loop seq
       do l=1, lr_e !yjhu
          xt=x3e(m) + rhox(l)
          yt=y3e(m) + rhoy(l)
@@ -1765,19 +1774,20 @@ subroutine restart(iflag,n)
       do ns = 1,nsm
          read(139+MyId)mm(ns)
          do m=1,mm(ns)
-            read(139+MyId) mu(ns,m)
-            read(139+MyId) x2(ns,m),y2(ns,m),z2(ns,m),u2(ns,m),w2(ns,m)
-            read(139+MyId) eki(ns,m)
-            w2(ns,m)=w2(ns,m)/cut
-            x3(ns,m)=x2(ns,m)
-            y3(ns,m)=y2(ns,m)
-            z3(ns,m)=z2(ns,m)
-            u3(ns,m)=u2(ns,m)
-            w3(ns,m)=w2(ns,m)
+            read(139+MyId) mu(m,ns)
+            read(139+MyId) x2(m,ns),y2(m,ns),z2(m,ns),u2(m,ns),w2(m,ns)
+            read(139+MyId) eki(m,ns)
+            w2(m,ns)=w2(m,ns)/cut
+            x3(m,ns)=x2(m,ns)
+            y3(m,ns)=y2(m,ns)
+            z3(m,ns)=z2(m,ns)
+            u3(m,ns)=u2(m,ns)
+            w3(m,ns)=w2(m,ns)
          enddo
       end do
 120   continue
 
+!$acc update device(mu,x2,y2,z2,u2,w2)
       read(139+MyId)mme
       do  m=1,mme
          read(139+MyId) x2e(m),y2e(m),z2e(m),u2e(m),w2e(m),mue2(m),ipass(m)
@@ -1798,20 +1808,21 @@ subroutine restart(iflag,n)
       end do
       close(139+MyId)
    endif
-
+!$acc update device(x2e,y2e,z2e,u2e,w2e,mue2,ipass)
    if(iflag.eq.2) then
       open(139+MyId,file=fname,form='unformatted',status='unknown')
       write(139+MyId)n+1
       write(139+MyId)tcurr-dt,rmpp,rmaa
+!$acc update host(mu,x2,y2,z2,u2,w2,eki)
       do ns = 1,nsm
          write(139+MyId)mm(ns)
          do m=1,mm(ns)
-            write(139+MyId) mu(ns,m)
-            write(139+MyId) x2(ns,m),y2(ns,m),z2(ns,m),u2(ns,m),w2(ns,m)
-            write(139+MyId) eki(ns,m)
+            write(139+MyId) mu(m,ns)
+            write(139+MyId) x2(m,ns),y2(m,ns),z2(m,ns),u2(m,ns),w2(m,ns)
+            write(139+MyId) eki(m,ns)
          enddo
       end do
-
+!$acc update host(x2e,y2e,z2e,u2e,w2e,mue2,ipass,eke)
       write(139+MyId)mme
       do  m=1,mme
          write(139+MyId) x2e(m),y2e(m),z2e(m),u2e(m),w2e(m),mue2(m),ipass(m)
@@ -3116,19 +3127,19 @@ subroutine loadi(ns)
       if(ran2(iseed)<(0.5*jacp/jacmax))then
          m = m+1
          if(m>mm(ns))goto 170
-         x2(ns,m)=min(dumx,lx-1e-8)
-         y2(ns,m)=min(dumy,ly-1e-8)
+         x2(m,ns)=min(dumx,lx-1e-8)
+         y2(m,ns)=min(dumy,ly-1e-8)
 
          k = int((th+pi)/dth)
          wz0 = (-pi+(k+1)*dth-th)/dth
          wz1 = 1-wz0
-         z2(ns,m) = wz0*zfnth(k)+wz1*zfnth(k+1)
-         z2(ns,m)=min(z2(ns,m),lz-1e-8)
+         z2(m,ns) = wz0*zfnth(k)+wz1*zfnth(k+1)
+         z2(m,ns)=min(z2(m,ns),lz-1e-8)
 
          call parperp(vpar,vperp2,m,pi,cnt,MyId)
          !   normalizations will be done in following loop...
 
-         r=x2(ns,m)-0.5*lx+lr0
+         r=x2(m,ns)-0.5*lx+lr0
          cost=cos(th)
          i = int((r-rin)/dr)
          wx0 = (rin+(i+1)*dr-r)/dr
@@ -3143,16 +3154,16 @@ subroutine loadi(ns)
          if(ildu==1)ter = tgis(ns)
          b=1.-tor+tor*bfldp
 
-         u2(ns,m)=vpar/sqrt(mims(ns)/ter)
-         mu(ns,m)=0.5*vperp2/b*ter
-         eki(ns,m) = mu(ns,m)*b+0.5*mims(ns)*u2(ns,m)**2
-         myavgv=myavgv+u2(ns,m)
+         u2(m,ns)=vpar/sqrt(mims(ns)/ter)
+         mu(m,ns)=0.5*vperp2/b*ter
+         eki(m,ns) = mu(m,ns)*b+0.5*mims(ns)*u2(m,ns)**2
+         myavgv=myavgv+u2(m,ns)
 
-         !    LINEAR: perturb w(ns,m) to get linear growth...
-         w2(ns,m)=2.*amp*(revers(MyId*cnt+m,13)-0.5) !(ran2(iseed) - 0.5 )
-!        w2(ns,m)=2.*amp*sin(pi2/ly*y2(ns,m))*exp(-(z2(ns,m)-lz/2)**2/(lz/8)**2)*exp(-(x2(ns,m)-0.4*lx)**2/(lx/8)**2)
-         if(ns==2)w2(ns,m) = 0.
-         myavgw=myavgw+w2(ns,m)
+         !    LINEAR: perturb w(m,ns) to get linear growth...
+         w2(m,ns)=2.*amp*(revers(MyId*cnt+m,13)-0.5) !(ran2(iseed) - 0.5 )
+!        w2(m,ns)=2.*amp*sin(pi2/ly*y2(m,ns))*exp(-(z2(m,ns)-lz/2)**2/(lz/8)**2)*exp(-(x2(m,ns)-0.4*lx)**2/(lx/8)**2)
+         if(ns==2)w2(m,ns) = 0.
+         myavgw=myavgw+w2(m,ns)
       end if
    enddo
 170 continue
@@ -3165,49 +3176,49 @@ subroutine loadi(ns)
    if(idg.eq.1)write(*,*)'all reduce'
    avgv=avgv/real(tmm(1))
    do m=1,mm(ns)
-      u2(ns,m)=u2(ns,m)-avgv
-      x3(ns,m)=x2(ns,m)
-      y3(ns,m)=y2(ns,m)
-      z3(ns,m)=z2(ns,m)
-      u3(ns,m)=u2(ns,m)
-      !         w2(ns,m) = w2(ns,m)-myavgw
-      w3(ns,m)=w2(ns,m)
+      u2(m,ns)=u2(m,ns)-avgv
+      x3(m,ns)=x2(m,ns)
+      y3(m,ns)=y2(m,ns)
+      z3(m,ns)=z2(m,ns)
+      u3(m,ns)=u2(m,ns)
+      !         w2(m,ns) = w2(m,ns)-myavgw
+      w3(m,ns)=w2(m,ns)
    enddo
 
    np_old=mm(ns)
-   call init_pmove(z2(ns,:),np_old,lz,ierr)
+   call init_pmove(z2(:,ns),np_old,lz,ierr)
    if(idg.eq.1)write(*,*)'pass init_pmove'
    !
-   call pmove(x2(ns,:),np_old,np_new,ierr)
+   call pmove(x2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(x3(ns,:),np_old,np_new,ierr)
+   call pmove(x3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y2(ns,:),np_old,np_new,ierr)
+   call pmove(y2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y3(ns,:),np_old,np_new,ierr)
+   call pmove(y3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z2(ns,:),np_old,np_new,ierr)
+   call pmove(z2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z3(ns,:),np_old,np_new,ierr)
+   call pmove(z3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u2(ns,:),np_old,np_new,ierr)
+   call pmove(u2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u3(ns,:),np_old,np_new,ierr)
+   call pmove(u3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w2(ns,:),np_old,np_new,ierr)
+   call pmove(w2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w3(ns,:),np_old,np_new,ierr)
+   call pmove(w3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(mu(ns,:),np_old,np_new,ierr)
+   call pmove(mu(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
-   call pmove(eki(ns,:),np_old,np_new,ierr)
+   call pmove(eki(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
    !
    call end_pmove(ierr)
    mm(ns)=np_new
-
+!$acc update device(x2,x3,y2,y3,z2,z3,u2,u3,w2,w3,mu,eki)
    !      return
 end subroutine loadi
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -3466,7 +3477,7 @@ subroutine pint
    myaven = 0.
    pidum = 1./(pi*2)**1.5*(vwidthe)**3
    pint_start_tm = pint_start_tm + MPI_WTIME()
-   !$acc parallel loop
+   !$acc parallel loop private(rhox,rhoy)
    do m=1,mme
       r=x2e(m)-0.5*lx+lr0
 
@@ -3524,6 +3535,7 @@ subroutine pint
       if(electron_flr.eqv..true.) then !yjhu
          rhog=sqrt(2.*b*mue2(m)*emass)/(b) !yjhu
          gdum = ran2(iseed)*pi2
+         !$acc loop seq
          do l=1,lr_e !yjhu added, March 8, 2019
             gphase = l*pi2/lr_e+gdum
             rhox(l) = cos(gphase)*rhog*grp
@@ -3531,14 +3543,18 @@ subroutine pint
          enddo
       else
          lr_e=1
-         rhox=0.0
-         rhoy=0.0
+         !$acc loop seq
+         do l=1,lr_e
+            rhox(l)=0.0
+            rhoy(l)=0.0
+         enddo
       endif
       !     write(*,*) 'rhog=', rhog
       exp1=0.; eyp=0.0; ezp=0.0; delbxp=0.0; delbyp=0.0 ; dgdtp=0.0 !yjhu
       dpdzp=0.0;   dadzp=0.0;  aparp=0.0;  phip=0.0  !yjhu
 !!$     xt = x2e(m)
 !!$     yt = y2e(m)
+      !$acc loop seq
       do l=1,lr_e !yjhu
          xt = x2e(m) + rhox(l)
          yt = y2e(m) + rhoy(l)
@@ -3761,44 +3777,44 @@ subroutine pint
 
    np_old=mme
    init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
-   call init_pmove(z3e,np_old,lz,ierr)
+   call test_init_pmove(z3e,np_old,lz,ierr)
    init_pmove_end_tm = init_pmove_end_tm + MPI_WTIME()
 
    pmove_start_tm = pmove_start_tm + MPI_WTIME()
-   call pmove(x2e,np_old,np_new,ierr)
+   call test_pmove(x2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(x3e,np_old,np_new,ierr)
+   call test_pmove(x3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y2e,np_old,np_new,ierr)
+   call test_pmove(y2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y3e,np_old,np_new,ierr)
+   call test_pmove(y3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z2e,np_old,np_new,ierr)
+   call test_pmove(z2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z3e,np_old,np_new,ierr)
+   call test_pmove(z3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u2e,np_old,np_new,ierr)
+   call test_pmove(u2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u3e,np_old,np_new,ierr)
+   call test_pmove(u3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w2e,np_old,np_new,ierr)
+   call test_pmove(w2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w3e,np_old,np_new,ierr)
+   call test_pmove(w3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(mue2,np_old,np_new,ierr)
+   call test_pmove(mue2,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(mue3,np_old,np_new,ierr)
-   if (ierr.ne.0) call ppexit
-
-   call pmove(index,np_old,np_new,ierr)
-   if (ierr.ne.0) call ppexit
-   call pmove(ipass,np_old,np_new,ierr)
+   call test_pmove(mue3,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
-   call pmove(mue,np_old,np_new,ierr)
+   call test_pmove(index,np_old,np_new,ierr)
+   if (ierr.ne.0) call ppexit
+   call test_pmove(ipass,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
-   call pmove(eke,np_old,np_new,ierr)
+   call test_pmove(mue,np_old,np_new,ierr)
+   if (ierr.ne.0) call ppexit
+
+   call test_pmove(eke,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
    pmove_end_tm = pmove_end_tm + MPI_WTIME()
@@ -3855,7 +3871,7 @@ subroutine cint(n)
    pidum = 1./(pi*2)**1.5*(vwidthe)**3
 
    cint_start_tm = cint_start_tm + MPI_WTIME()
-   !$acc parallel loop
+   !$acc parallel loop private(rhox,rhoy)
    do m=1,mme
       r=x3e(m)-0.5*lx+lr0
 
@@ -3913,6 +3929,7 @@ subroutine cint(n)
       if(electron_flr.eqv..true.) then !yjhu
          rhog=sqrt(2.*b*mue2(m)*emass)/(b) !yjhu
          gdum = ran2(iseed)*pi2
+         !$acc loop seq
          do l=1,lr_e !yjhu added, March 8, 2019
             gphase = l*pi2/lr_e+gdum
             rhox(l) = cos(gphase)*rhog*grp
@@ -3920,13 +3937,17 @@ subroutine cint(n)
          enddo
       else
          lr_e=1
-         rhox=0.0
-         rhoy=0.0
+         !$acc loop seq
+         do l=1,lr_e
+            rhox(l) = 0.0
+            rhoy(l) = 0.0
+         enddo
       endif
       exp1=0.; eyp=0.0; ezp=0.0; delbxp=0.0; delbyp=0.0 ; dgdtp=0.0 !yjhu
       dpdzp=0.0;   dadzp=0.0;  aparp=0.0;  phip=0.0  !yjhu
 !!$     xt = x3e(m)
 !!$     yt = y3e(m)
+      !$acc loop seq
       do l=1, lr_e !yjhu
          xt = x3e(m) + rhox(l)
          yt = y3e(m) + rhoy(l)
@@ -4229,44 +4250,44 @@ subroutine cint(n)
    np_old=mme
 
    init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
-   call init_pmove(z3e,np_old,lz,ierr)
+   call test_init_pmove(z3e,np_old,lz,ierr)
    init_pmove_end_tm = init_pmove_end_tm + MPI_WTIME()
 
    pmove_start_tm = pmove_start_tm + MPI_WTIME()
-   call pmove(x2e,np_old,np_new,ierr)
+   call test_pmove(x2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(x3e,np_old,np_new,ierr)
+   call test_pmove(x3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
    if (ierr.ne.0) call ppexit
-   call pmove(y2e,np_old,np_new,ierr)
+   call test_pmove(y2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y3e,np_old,np_new,ierr)
+   call test_pmove(y3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z2e,np_old,np_new,ierr)
+   call test_pmove(z2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z3e,np_old,np_new,ierr)
+   call test_pmove(z3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u2e,np_old,np_new,ierr)
+   call test_pmove(u2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u3e,np_old,np_new,ierr)
+   call test_pmove(u3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w2e,np_old,np_new,ierr)
+   call test_pmove(w2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w3e,np_old,np_new,ierr)
+   call test_pmove(w3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(mue2,np_old,np_new,ierr)
+   call test_pmove(mue2,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(mue3,np_old,np_new,ierr)
-   if (ierr.ne.0) call ppexit
-
-   call pmove(index,np_old,np_new,ierr)
-   if (ierr.ne.0) call ppexit
-   call pmove(ipass,np_old,np_new,ierr)
+   call test_pmove(mue3,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
-   call pmove(mue,np_old,np_new,ierr)
+   call test_pmove(index,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(eke,np_old,np_new,ierr)
+   call test_pmove(ipass,np_old,np_new,ierr)
+   if (ierr.ne.0) call ppexit
+
+   call test_pmove(mue,np_old,np_new,ierr)
+   if (ierr.ne.0) call ppexit
+   call test_pmove(eke,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
    pmove_end_tm = pmove_end_tm + MPI_WTIME()
    call end_pmove(ierr)
@@ -6025,7 +6046,9 @@ subroutine ldel
    !
    call end_pmove(ierr)
    mme=np_new
-
+   ipass(:) = 0.0
+   index(:) = 0.0
+!$acc update device(x2e,x3e,y2e,y3e,z2e,z3e,u2e,u3e,w2e,w3e,mue2,mue3,mue,eke,ipass,index)
    !      return
 end subroutine ldel
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -6161,7 +6184,7 @@ subroutine avgi(ns)
    use gem_com
    use gem_equil
    implicit none
-   INTEGER :: ns,m,n,ip,i,j,k,j1,j2,j3,j4
+   INTEGER :: m,ns,n,ip,i,j,k,j1,j2,j3,j4
    real :: bfldp,ter
    real :: wx0,wx1,wz0,wz1
    real :: r,qr,th,cost,sint,b,vfac,js,jv,dum,dum1,pidum,vel
@@ -6183,10 +6206,10 @@ subroutine avgi(ns)
    mytotw = 0.
    myng = 0
    do m=1,mm(ns)
-      r=x3(ns,m)-0.5*lx+lr0
+      r=x3(m,ns)-0.5*lx+lr0
 
-      k = int(z3(ns,m)/delz)
-      wz0 = ((k+1)*delz-z3(ns,m))/delz
+      k = int(z3(m,ns)/delz)
+      wz0 = ((k+1)*delz-z3(m,ns))/delz
       wz1 = 1-wz0
       th = wz0*thfnz(k)+wz1*thfnz(k+1)
 
@@ -6200,14 +6223,14 @@ subroutine avgi(ns)
          +wx1*wz0*bfld(i+1,k)+wx1*wz1*bfld(i+1,k+1)
       ter = wx0*t0s(ns,i)+wx1*t0s(ns,i+1)
       b=1.-tor+tor*bfldp
-      vfac = 0.5*(mims(ns)*u3(ns,m)**2 + 2.*mu(ns,m)*b)
+      vfac = 0.5*(mims(ns)*u3(m,ns)**2 + 2.*mu(m,ns)*b)
       vel = sqrt(2.*vfac/mims(ns))
-      lamb = u3(ns,m)/(vel+1.e-6)
+      lamb = u3(m,ns)/(vel+1.e-6)
 
-      xt = x3(ns,m)
+      xt = x3(m,ns)
       i=int(xt/dx)
       i = min(i,im-1)
-      j = int(y3(ns,m)/dy)
+      j = int(y3(m,ns)/dy)
       j = min(j,jmx-1)
       ie = int((vfac/ter)/dvfac)
       il = int((lamb+1.0)/dlamb)
@@ -6216,7 +6239,7 @@ subroutine avgi(ns)
          goto 100
       end if
 
-      mytotw(i,j,ie,il) = mytotw(i,j,ie,il)+w3(ns,m)
+      mytotw(i,j,ie,il) = mytotw(i,j,ie,il)+w3(m,ns)
 
       myng(i,j,ie,il) = myng(i,j,ie,il)+1
 
@@ -6237,10 +6260,10 @@ subroutine avgi(ns)
    if(idg==1)write(*,*)'before 2 loop',myid
    myavewe = 0.
    do m=1,mm(ns)
-      r=x3(ns,m)-0.5*lx+lr0
+      r=x3(m,ns)-0.5*lx+lr0
 
-      k = int(z3(ns,m)/delz)
-      wz0 = ((k+1)*delz-z3(ns,m))/delz
+      k = int(z3(m,ns)/delz)
+      wz0 = ((k+1)*delz-z3(m,ns))/delz
       wz1 = 1-wz0
       th = wz0*thfnz(k)+wz1*thfnz(k+1)
 
@@ -6254,14 +6277,14 @@ subroutine avgi(ns)
          +wx1*wz0*bfld(i+1,k)+wx1*wz1*bfld(i+1,k+1)
       ter = wx0*t0s(ns,i)+wx1*t0s(ns,i+1)
       b=1.-tor+tor*bfldp
-      vfac = 0.5*(mims(ns)*u3(ns,m)**2 + 2.*mu(ns,m)*b)
+      vfac = 0.5*(mims(ns)*u3(m,ns)**2 + 2.*mu(m,ns)*b)
       vel = sqrt(2.*vfac/mims(ns))
-      lamb = u3(ns,m)/(vel+1.e-6)
+      lamb = u3(m,ns)/(vel+1.e-6)
 
-      xt = x3(ns,m)
+      xt = x3(m,ns)
       i=int(xt/dx)
       i = min(i,im-1)
-      j = int(y3(ns,m)/dy)
+      j = int(y3(m,ns)/dy)
       j = min(j,jmx-1)
       ie = int((vfac/ter)/dvfac)
       il = int((lamb+1.0)/dlamb)
@@ -6277,8 +6300,8 @@ subroutine avgi(ns)
    avwi = avwi/real(tmm(1))
 
    do m=1,mme
-      w3(ns,m) = wght(m)
-      w2(ns,m) = w3(ns,m)
+      w3(m,ns) = wght(m)
+      w2(m,ns) = w3(m,ns)
    end do
    !      if(myid==0)write(*,*)'avwi',avwi
 
