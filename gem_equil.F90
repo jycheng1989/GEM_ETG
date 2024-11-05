@@ -98,6 +98,23 @@ contains
       allocate(db2dl(0:ntheta),db2drho(0:ntheta),dbpsdl(0:ntheta))
       allocate(candyd0(0:ntheta),candyd1(0:ntheta),candyd2(0:ntheta),candynus(0:ntheta),candynu1(0:ntheta),candydr(0:ntheta))
 
+!$acc enter data create( bfld,qhat,radius,gr,gth,grdgt,grcgt)
+!$acc enter data create( gxdgy,dydr,dbdr,dbdth,jacob)
+!$acc enter data create( yfn,hght,thflx,psi) 
+!$acc enter data create( f,psip,sf,jacoba,jfn,zfnth,thfnz)
+!$acc enter data create( t0i,t0e,t0b,t0c,t0ip,t0ep,t0bp,t0cp)
+!$acc enter data create( xn0i,xn0e,xn0c,xn0b,xn0ip,xn0ep,xn0bp)
+!$acc enter data create( xn0cp,vpari,vparc,vparb)
+!$acc enter data create( vparip,vparcp,vparbp)
+!$acc enter data create( capti,capte,captb,captc,capni,capne)
+!$acc enter data create( capnb,capnc,zeff,nue0,phinc,phincp)
+!$acc enter data create( er,upari,dipdr)
+!$acc enter data create( psip2)
+!$acc enter data create( curvbz,srbr,srbz,thbr,thbz,prsrbr,prsrbz,pthsrbr,pthsrbz,bdcrvb)
+!$acc enter data create( t0s,xn0s,capts,capns,vpars,vparsp)
+!$acc enter data create( cn0s,n0smax,tgis)
+
+
       !Normalization
       e = 1.6e-19
       proton = 1.67e-27

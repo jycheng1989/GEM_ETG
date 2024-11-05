@@ -650,6 +650,23 @@ subroutine init
       write(*,*) 't0i(nr/2)= ', t0i(nr/2)
       write(*,*) 'Gyrokrs = ', 2*pi*sqrt(mims(1))*sqrt(t0e(nr/2))/ly/bunit
    end if
+
+!$acc update device( bfld,qhat,radius,gr,gth,grdgt,grcgt)
+!$acc update device( gxdgy,dydr,dbdr,dbdth,jacob)
+!$acc update device( yfn,hght,thflx,psi) 
+!$acc update device( f,psip,sf,jacoba,jfn,zfnth,thfnz)
+!$acc update device( t0i,t0e,t0b,t0c,t0ip,t0ep,t0bp,t0cp)
+!$acc update device( xn0i,xn0e,xn0c,xn0b,xn0ip,xn0ep,xn0bp)
+!$acc update device( xn0cp,vpari,vparc,vparb)
+!$acc update device( vparip,vparcp,vparbp)
+!$acc update device( capti,capte,captb,captc,capni,capne)
+!$acc update device( capnb,capnc,zeff,nue0,phinc,phincp)
+!$acc update device( er,upari,dipdr)
+!$acc update device( psip2)
+!$acc update device( curvbz,srbr,srbz,thbr,thbz,prsrbr,prsrbz,pthsrbr,pthsrbz,bdcrvb)
+!$acc update device( t0s,xn0s,capts,capns,vpars,vparsp)
+!$acc update device( cn0s,n0smax,tgis)
+
    !      return
 end subroutine init
 
