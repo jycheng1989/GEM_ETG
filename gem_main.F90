@@ -1847,7 +1847,7 @@ subroutine parperp(vpar,vperp2,m,pi,cnt,MyId)
 
    INTERFACE
       real function revers(num,n)
-         integer :: num,n
+         integer*8 :: num,n
       end function revers
    END INTERFACE
 
@@ -1859,8 +1859,8 @@ subroutine parperp(vpar,vperp2,m,pi,cnt,MyId)
    data d1,d2,d3/1.432788,0.189269,0.001308/
 
 
-   r1=revers(m+MyId*cnt,7)
-   r2=revers(m+MyId*cnt,11)
+   r1=revers(int(m,8)+int(MyId,8)*int(cnt,8),int(7,8))
+   r2=revers(int(m,8)+int(MyId,8)*int(cnt,8),int(11,8))
 
 
    !.....quiet start---see denavit pf '71(?) & abramowitz hand book
