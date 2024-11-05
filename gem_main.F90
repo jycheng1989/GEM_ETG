@@ -685,6 +685,7 @@ subroutine ppush(n,ns)
    mynopi = 0
    nopi(ns) = 0
    ppush_start_tm = ppush_start_tm+MPI_WTIME()
+   !$acc parallel loop private(rhox, rhoy)
    do m=1,mm(ns)
       r=x2(ns,m)-0.5*lx+lr0
       k = int(z2(ns,m)/delz)
@@ -760,6 +761,7 @@ subroutine ppush(n,ns)
       dadzp = 0.
       aparp = 0.
 
+      !$acc loop seq
       do l=1,lr(ns) !yjhu added
          xs=x2(ns,m)+rhox(l) !rwx(1,l)*rhog
          yt=y2(ns,m)+rhoy(l) !(rwy(1,l)+sz*rwx(1,l))*rhog
@@ -980,6 +982,7 @@ subroutine cpush(n,ns)
    pidum = 1./(pi*2)**1.5*vwidth**3
 
    cpush_start_tm = cpush_start_tm + MPI_WTIME()
+   !$acc parallel loop private(rhox, rhoy)
    do m=1,mm(ns)
       r=x3(ns,m)-0.5*lx+lr0
 
@@ -1054,6 +1057,7 @@ subroutine cpush(n,ns)
       dadzp = 0.
       aparp = 0.
 
+     !$acc loop seq
       do l=1,lr(ns)
          xs=x3(ns,m)+rhox(l) !rwx(1,l)*rhog
          yt=y3(ns,m)+rhoy(l) !(rwy(1,l)+sz*rwx(1,l))*rhog
@@ -1182,12 +1186,19 @@ subroutine cpush(n,ns)
       k = int(x3(ns,m)/(lx/nsubd))
       k = min(k,nsubd-1)
       k = k+1
+      !$acc atomic update
       mypfl_es(k)=mypfl_es(k) + w3old*(eyp)
+      !$acc atomic update
       mypfl_em(k)=mypfl_em(k) + w3old*(vpar*delbxp/b)
+      !$acc atomic update
       myefl_es(k)=myefl_es(k) + vfac*w3old*(eyp)
+      !$acc atomic update
       myefl_em(k)=myefl_em(k) + vfac*w3old*(vpar*delbxp/b)
+      !$acc atomic update
       myke=myke + vfac*w3(ns,m)
+      !$acc atomic update
       mynos=mynos + w3(ns,m)
+      !$acc atomic update
       myavewi = myavewi+abs(w3(ns,m))
 
       !     xn+1 becomes xn...
@@ -1363,6 +1374,7 @@ subroutine grid1(ip,n)
       myjpar = 0.
       mydti = 0.
       grid1_ion_start_tm = grid1_ion_start_tm + MPI_WTIME()
+      !$acc parallel loop private(rhox, rhoy)
       do m=1,mm(ns)
 !yjhu        dv=real(lr(1))*(dx*dy*dz)
          dv=real(lr(ns))*(dx*dy*dz) !yjhu added
@@ -1417,6 +1429,7 @@ subroutine grid1(ip,n)
 
          vpar = u3(ns,m) !linearly correct
 
+         !$acc loop seq
          do l=1,lr(ns)
             xt=x3(ns,m)+rhox(l) !rwx(1,l)*rhog
             yt=y3(ns,m)+rhoy(l) !(rwy(1,l)+sz*rwx(1,l))*rhog
@@ -1428,8 +1441,11 @@ subroutine grid1(ip,n)
             j=int(yt/dy+0.5)
             k=int(z3(ns,m)/dz+0.5)-gclr*kcnt
 
+            !$acc atomic update
             myden(i,j,k) = myden(i,j,k) + wght
+            !$acc atomic update
             myjpar(i,j,k) = myjpar(i,j,k)+wght*vpar
+            !$acc atomic update
             mydti(i,j,k) = mydti(i,j,k)+wght*vfac
 
          enddo !yjhu N-point in gyo-phase
@@ -1486,6 +1502,7 @@ subroutine grid1(ip,n)
    myupar = 0.
    if(idg.eq.1)write(*,*)'enter electron grid1'
    grid1_electron_start_tm = grid1_electron_start_tm + MPI_WTIME()
+   !$acc parallel loop
    do m=1,mme
       r=x3e(m)-0.5*lx+lr0
 
@@ -1572,22 +1589,38 @@ subroutine grid1(ip,n)
          x110=wx1*wy1*wz0
          x111=wx1*wy1*wz1
 
+         !$acc atomic update
          mydene(i,j,k)      =mydene(i,j,k)+wght*x000
+         !$acc atomic update
          mydene(i+1,j,k)    =mydene(i+1,j,k)+wght*x100
+         !$acc atomic update
          mydene(i,j+1,k)    =mydene(i,j+1,k)+wght*x010
+         !$acc atomic update
          mydene(i+1,j+1,k)  =mydene(i+1,j+1,k)+wght*x110
+         !$acc atomic update
          mydene(i,j,k+1)    =mydene(i,j,k+1)+wght*x001
+         !$acc atomic update
          mydene(i+1,j,k+1)  =mydene(i+1,j,k+1)+wght*x101
+         !$acc atomic update
          mydene(i,j+1,k+1)  =mydene(i,j+1,k+1)+wght*x011
+         !$acc atomic update
          mydene(i+1,j+1,k+1)=mydene(i+1,j+1,k+1)+wght*x111
 
+         !$acc atomic update
          myupar(i,j,k)      =myupar(i,j,k)+wght*vpar*x000
+         !$acc atomic update
          myupar(i+1,j,k)    =myupar(i+1,j,k)+wght*vpar*x100
+         !$acc atomic update
          myupar(i,j+1,k)    =myupar(i,j+1,k)+wght*vpar*x010
+         !$acc atomic update
          myupar(i+1,j+1,k)  =myupar(i+1,j+1,k)+wght*vpar*x110
+         !$acc atomic update
          myupar(i,j,k+1)    =myupar(i,j,k+1)+wght*vpar*x001
+         !$acc atomic update
          myupar(i+1,j,k+1)  =myupar(i+1,j,k+1)+wght*vpar*x101
+         !$acc atomic update
          myupar(i,j+1,k+1)  =myupar(i,j+1,k+1)+wght*vpar*x011
+         !$acc atomic update
          myupar(i+1,j+1,k+1)=myupar(i+1,j+1,k+1)+wght*vpar*x111
       enddo !yjhu N-point in gyo-phase
    enddo !loop over markers
@@ -3416,6 +3449,7 @@ subroutine pint
    myaven = 0.
    pidum = 1./(pi*2)**1.5*(vwidthe)**3
    pint_start_tm = pint_start_tm + MPI_WTIME()
+   !$acc parallel loop
    do m=1,mme
       r=x2e(m)-0.5*lx+lr0
 
@@ -3804,6 +3838,7 @@ subroutine cint(n)
    pidum = 1./(pi*2)**1.5*(vwidthe)**3
 
    cint_start_tm = cint_start_tm + MPI_WTIME()
+   !$acc parallel loop
    do m=1,mme
       r=x3e(m)-0.5*lx+lr0
 
@@ -4080,13 +4115,21 @@ subroutine cint(n)
       k = int(x3e(m)/(lx/nsubd))
       k = min(k,nsubd-1)
       k = k+1
+      !$acc atomic update
       mypfl_es(k)=mypfl_es(k) + w3old*(eyp)
+      !$acc atomic update
       mypfl_em(k)=mypfl_em(k) + w3old*(vpar*delbxp/b)
+      !$acc atomic update
       myptrp=myptrp + w3old*eyp*(1-ipass(m))
+      !$acc atomic update
       myefl_es(k)=myefl_es(k) + vfac*w3old*(eyp)
+      !$acc atomic update
       myefl_em(k)=myefl_em(k) + vfac*w3old*(vpar*delbxp/b)
+      !$acc atomic update
       myke=myke + vfac*w3e(m)
+      !$acc atomic update
       mynos=mynos + w3e(m)
+      !$acc atomic update
       myavewe = myavewe+abs(w3e(m))
 
       if(abs(z3e(m)-z2e(m)).gt.lz/2)ipass(m)=1
