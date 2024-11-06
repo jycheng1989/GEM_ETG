@@ -680,7 +680,7 @@ subroutine ppush(n,ns)
    & nopi,kcnt, lr0, lx, ly, lz, peritr, pi, tor, vexbsw, vparsw, vwidth, q, mims, &
    & ex, ey, ez, delbx, delby, dpdz, dadz, apar, lr, nonlin, pzcrit,ran2,iseed,pi2
    use gem_com, only : ppush_start_tm, ppush_end_tm, init_pmove_start_tm, init_pmove_end_tm, pmove_start_tm, pmove_end_tm
-   use gem_pputil,  only : init_pmove, pmove, ppexit, end_pmove !subroutine names
+   use gem_pputil,  only : test_init_pmove, test_pmove, ppexit, end_pmove !subroutine names
    use gem_equil,   only : delz, dr, dth, ildu, iperidf, nr,q0, r0, rin, thfnz, dbdr, dbdth, &
    & grcgt, bfld, radius, dydr, qhat, gr, gxdgy, curvbz, bdcrvb, grdgt,f, jfn, &
    & psip, psi, t0s, capts, capns, xn0s, phincp, vparsp, psip2, dipdr, tgis,sf, itube
@@ -966,7 +966,7 @@ subroutine cpush(n,ns)
    & grcgt, bfld, radius, dydr, qhat, gr, gxdgy, curvbz, bdcrvb, grdgt, f, jfn, psip, &
    & psi, t0s, capts, capns, xn0s, psip2, dipdr, phincp, vparsp, tgis, sf, cn0s, rmaj0
    use gem_com, only : cpush_start_tm, cpush_end_tm, init_pmove_start_tm, init_pmove_end_tm, pmove_start_tm, pmove_end_tm
-   use gem_pputil, only : init_pmove, pmove, end_pmove, ppexit
+   use gem_pputil, only : test_init_pmove, test_pmove, end_pmove, ppexit
    implicit none
    INTEGER :: n
    real :: phip,exp1,eyp,ezp,delbxp,delbyp,dpdzp,dadzp,aparp
