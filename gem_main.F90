@@ -698,12 +698,19 @@ subroutine ppush(n,ns)
    real :: rhox(lr(ns)),rhoy(lr(ns)),rx1,rx2,ry1,ry2,gphase,gdum !yjhu
    real :: grp,gxdgyp,psp,pzp,vncp,vparspp,psip2p,bdcrvbp,curvbzp,dipdrp !yjhu
    integer :: mynopi
+   integer :: npool
+   parameter(npool=100000)
+   real :: randpool(0:npool-1)
+      
+   do i = 0,npool-1
+     randpool(i) = ran2(iseed)
+   end do
 
    pidum = 1./(pi*2)**1.5*vwidth**3
    mynopi = 0
    nopi(ns) = 0
    ppush_start_tm = ppush_start_tm+MPI_WTIME()
-   !$acc parallel loop private(rhox, rhoy)
+   !$acc parallel loop private(rhox, rhoy) copyin(randpool)
    do m=1,mm(ns)
       r=x2(m,ns)-0.5*lx+lr0
       k = int(z2(m,ns)/delz)
@@ -760,7 +767,8 @@ subroutine ppush(n,ns)
 
       rhog=sqrt(2.*b*mu(m,ns)*mims(ns))/(q(ns)*b)*iflr
 
-      gdum = ran2(iseed)*pi2
+      !gdum = ran2(iseed)*pi2
+      gdum = randpool(modulo(m-1, npool)) * pi2
       !$acc loop seq
       do l=1,lr(ns) !yjhu added, March 8, 2019
          gphase = l*pi2/lr(ns)+gdum
@@ -985,6 +993,14 @@ subroutine cpush(n,ns)
 !yjhu  real :: grp,gxdgyp,rhox(4),rhoy(4),psp,pzp,vncp,vparspp,psip2p,bdcrvbp,curvbzp,dipdrp
    real :: rhox(lr(ns)),rhoy(lr(ns)),rhoz(lr(ns)),rx1,rx2,ry1,ry2,gphase,gdum !yjhu
    real :: grp,gxdgyp,psp,pzp,vncp,vparspp,psip2p,bdcrvbp,curvbzp,dipdrp !yjhu
+   integer :: npool
+   parameter(npool=100000)
+   real :: randpool(0:npool-1)
+         
+   do i = 0,npool-1
+     randpool(i) = ran2(iseed)
+   end do
+
    sbuf(1:10) = 0.
    rbuf(1:10) = 0.
    myavewi = 0.
@@ -1001,7 +1017,7 @@ subroutine cpush(n,ns)
    pidum = 1./(pi*2)**1.5*vwidth**3
 
    cpush_start_tm = cpush_start_tm + MPI_WTIME()
-   !$acc parallel loop private(rhox, rhoy)
+   !$acc parallel loop private(rhox, rhoy) copyin(randpool)
    do m=1,mm(ns)
       r=x3(m,ns)-0.5*lx+lr0
 
@@ -1059,7 +1075,8 @@ subroutine cpush(n,ns)
 
       rhog=sqrt(2.*b*mu(m,ns)*mims(ns))/(q(ns)*b)*iflr
 
-      gdum = ran2(iseed)*pi2
+      !gdum = ran2(iseed)*pi2
+      gdum = randpool(modulo(m-1, npool)) * pi2
       !$acc loop seq
       do l=1,lr(ns) !yjhu added, March 8, 2019
          gphase = l*pi2/lr(ns)+gdum
@@ -1382,6 +1399,13 @@ subroutine grid1(ip,n)
 !yjhu  real :: grp,gxdgyp,rhox(4),rhoy(4)
    real :: grp,gxdgyp,rhox(maxval(lr)),rhoy(maxval(lr)) !yjhu added
    real :: x000,x001,x010,x011,x100,x101,x110,x111
+   integer :: npool
+   parameter(npool=100000)
+   real :: randpool(0:npool-1)
+         
+   do i = 0,npool-1
+     randpool(i) = ran2(iseed)
+   end do
    rho=0.
    jion = 0.
    mydte = 0.
@@ -1394,7 +1418,7 @@ subroutine grid1(ip,n)
       myjpar = 0.
       mydti = 0.
       grid1_ion_start_tm = grid1_ion_start_tm + MPI_WTIME()
-      !$acc parallel loop private(rhox, rhoy)
+      !$acc parallel loop private(rhox, rhoy) copyin(randpool)
       do m=1,mm(ns)
 !yjhu        dv=real(lr(1))*(dx*dy*dz)
          dv=real(lr(ns))*(dx*dy*dz) !yjhu added
@@ -1437,7 +1461,8 @@ subroutine grid1(ip,n)
 
          rhog=sqrt(2.*b*mu(m,ns)*mims(ns))/(q(ns)*b)*iflr
 
-         gdum = ran2(iseed)*pi2
+         !gdum = ran2(iseed)*pi2
+         gdum = randpool(modulo(m-1, npool))
          !$acc loop seq
          do l=1,lr(ns) !yjhu added, March 8, 2019
             gphase = l*pi2/lr(ns)+gdum
@@ -1523,7 +1548,7 @@ subroutine grid1(ip,n)
    myupar = 0.
    if(idg.eq.1)write(*,*)'enter electron grid1'
    grid1_electron_start_tm = grid1_electron_start_tm + MPI_WTIME()
-   !$acc parallel loop private(rhox,rhoy)
+   !$acc parallel loop private(rhox,rhoy) copyin(randpool)
    do m=1,mme
       r=x3e(m)-0.5*lx+lr0
 
@@ -1565,7 +1590,8 @@ subroutine grid1(ip,n)
       if(electron_flr.eqv..true.) then !yjhu
          rhog=sqrt(2.*b*mue3(m)*emass)/(b) !yjhu
          !write(*,*) 'rhoge=', rhog
-         gdum = ran2(iseed)*pi2
+         !gdum = ran2(iseed)*pi2
+         gdum = randpool(modulo(m-1, npool))
          !$acc loop seq
          do l=1,lr_e !yjhu added, March 8, 2019
             gphase = l*pi2/lr_e+gdum
@@ -3471,13 +3497,21 @@ subroutine pint
    integer :: myopz,myoen
    real :: x000,x001,x010,x011,x100,x101,x110,x111
    real :: rhog,gphase,gdum !yjhu
+   integer :: npool
+   parameter(npool=100000)
+   real :: randpool(0:npool-1)
+         
+   do i = 0,npool-1
+     randpool(i) = ran2(iseed)
+   end do
+
    myopz = 0
    myoen = 0
    myavptch = 0.
    myaven = 0.
    pidum = 1./(pi*2)**1.5*(vwidthe)**3
    pint_start_tm = pint_start_tm + MPI_WTIME()
-   !$acc parallel loop private(rhox,rhoy)
+   !$acc parallel loop private(rhox,rhoy) copyin(randpool)
    do m=1,mme
       r=x2e(m)-0.5*lx+lr0
 
@@ -3534,7 +3568,8 @@ subroutine pint
 
       if(electron_flr.eqv..true.) then !yjhu
          rhog=sqrt(2.*b*mue2(m)*emass)/(b) !yjhu
-         gdum = ran2(iseed)*pi2
+         !gdum = ran2(iseed)*pi2
+         gdum = randpool(modulo(m-1, npool))
          !$acc loop seq
          do l=1,lr_e !yjhu added, March 8, 2019
             gphase = l*pi2/lr_e+gdum
@@ -3850,6 +3885,14 @@ subroutine cint(n)
    real :: rhox(lr_e),rhoy(lr_e) !yjhu
    real :: x000,x001,x010,x011,x100,x101,x110,x111
    real :: rhog,gphase,gdum !yjhu
+   integer :: npool
+   parameter(npool=100000)
+   real :: randpool(0:npool-1)
+
+   do i = 0,npool-1
+     randpool(i) = ran2(iseed)
+   end do
+
    sbuf(1:10) = 0.
    rbuf(1:10) = 0.
    myavewe = 0.
@@ -3868,10 +3911,11 @@ subroutine cint(n)
    mytrap = 0.
    mynowe = 0
 
+   
    pidum = 1./(pi*2)**1.5*(vwidthe)**3
 
    cint_start_tm = cint_start_tm + MPI_WTIME()
-   !$acc parallel loop private(rhox,rhoy)
+   !$acc parallel loop private(rhox,rhoy) copyin(randpool)
    do m=1,mme
       r=x3e(m)-0.5*lx+lr0
 
@@ -3928,7 +3972,8 @@ subroutine cint(n)
 
       if(electron_flr.eqv..true.) then !yjhu
          rhog=sqrt(2.*b*mue2(m)*emass)/(b) !yjhu
-         gdum = ran2(iseed)*pi2
+         !gdum = ran2(iseed)*pi2
+         gdum = randpool(modulo(m-1,npool))*pi2
          !$acc loop seq
          do l=1,lr_e !yjhu added, March 8, 2019
             gphase = l*pi2/lr_e+gdum
@@ -4780,6 +4825,14 @@ subroutine jpar0(ip,n,it,itp)
    real :: rhox(lr_e),rhoy(lr_e),gphase,gdum !yjhu
    real :: x000,x001,x010,x011,x100,x101,x110,x111
    integer :: ierr
+   integer :: npool
+   parameter(npool=100000) 
+   real :: randpool(0:npool-1)
+      
+   do i = 0,npool-1
+     randpool(i) = ran2(iseed)
+   end do
+
    pidum = 1./(pi*2)**1.5*(vwidthe)**3
    if(isuni.eq.0)pidum = 1.
    ns=1
@@ -4851,7 +4904,8 @@ subroutine jpar0(ip,n,it,itp)
       if(electron_flr.eqv..true.) then !yjhu
          rhog=sqrt(2.*b*mue3(m)*emass)/(b) !yjhu
          !write(*,*) 'rhog_e in jpar0=', rhog
-         gdum = ran2(iseed)*pi2
+         !gdum = ran2(iseed)*pi2
+         gdum = randpool(modulo(m-1, npool)) * pi2
          do l=1,lr_e !yjhu added, March 8, 2019
             gphase = l*pi2/lr_e+gdum
             rhox(l) = cos(gphase)*rhog*grp
