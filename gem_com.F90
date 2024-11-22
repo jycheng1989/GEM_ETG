@@ -243,10 +243,10 @@ contains
       allocate (gn0e(0:nxpp),gt0e(0:nxpp),gt0i(0:nxpp),avap(0:nxpp))
       allocate (gn0s(1:5,0:nxpp))
       !          particle array declarations
-      allocate( mu(nsmx,1:mmx),eki(nsmx,1:mmx))
-      allocate( x2(nsmx,1:mmx),y2(nsmx,1:mmx),z2(nsmx,1:mmx),u2(nsmx,1:mmx))
-      allocate( x3(nsmx,1:mmx),y3(nsmx,1:mmx),z3(nsmx,1:mmx),u3(nsmx,1:mmx))
-      allocate( w2(nsmx,1:mmx),w3(nsmx,1:mmx))
+      allocate( mu(1:mmx,nsmx),eki(1:mmx,nsmx))
+      allocate( x2(1:mmx,nsmx),y2(1:mmx,nsmx),z2(1:mmx,nsmx),u2(1:mmx,nsmx))
+      allocate( x3(1:mmx,nsmx),y3(1:mmx,nsmx),z3(1:mmx,nsmx),u3(1:mmx,nsmx))
+      allocate( w2(1:mmx,nsmx),w3(1:mmx,nsmx))
 
       allocate( mue(1:mmxe),eke(1:mmxe))
       allocate( x2e(1:mmxe),y2e(1:mmxe),z2e(1:mmxe),u2e(1:mmxe),mue2(1:mmxe))
