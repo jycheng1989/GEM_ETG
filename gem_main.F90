@@ -100,6 +100,7 @@ program gem_main
    pint_tot_tm = pint_end_tm - pint_start_tm
    cint_tot_tm = cint_end_tm - cint_start_tm
    lorentz_tot_tm = lorentz_end_tm - lorentz_start_tm
+   colli_tot_tm = colli_end_tm - colli_start_tm
    grid1_ion_tot_tm = grid1_ion_end_tm - grid1_ion_start_tm
    grid1_electron_tot_tm = grid1_electron_end_tm - grid1_electron_start_tm
    init_pmove_tot_tm = init_pmove_end_tm - init_pmove_start_tm
@@ -144,6 +145,9 @@ program gem_main
    call mpi_reduce(lorentz_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
    lorentz_tot_tm = dum / real(numprocs)
 
+   call mpi_reduce(colli_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   colli_tot_tm = dum / real(numprocs)
+   
    call mpi_reduce(grid1_ion_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
    grid1_ion_tot_tm = dum / real(numprocs)
 
@@ -173,6 +177,7 @@ program gem_main
      write(123,*)'pint time =', pint_tot_tm
      write(123,*)'cint time =', cint_tot_tm
      write(123,*)'lorentz time =', lorentz_tot_tm
+     write(123,*)'colli time=', colli_tot_tm
      write(123,*)'grid1 ion time =', grid1_ion_tot_tm
      write(123,*)'grid1 electron time =', grid1_electron_tot_tm
      write(123,*)'init pmove time =', init_pmove_tot_tm
@@ -7303,6 +7308,7 @@ subroutine colli(ip,n)
    if(ip.eq.1)dtcol = dt/ncol*2
    if(ip.eq.0)dtcol = dt/ncol
    if(rneui==0.0)return
+   colli_start_tm = colli_start_tm + MPI_WTIME()
    do k = 1,mm(1)
       r=x3(1,k)-0.5*lx+lr0
 
@@ -7344,6 +7350,7 @@ subroutine colli(ip,n)
       u3(1,k) = vdum*ptch
       mu(1,k) = 0.5*mims(1)*vdum*vdum*(1.-ptch*ptch)/b
    end do
+   colli_end_tm = colli_end_tm + MPI_WTIME()
    !      return
 end subroutine colli
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc

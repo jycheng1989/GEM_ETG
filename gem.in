@@ -9,7 +9,7 @@ chgc = 6              !charge of impurity ions with respect to electron charge
 
 imx = 1024            !number of grid points along x direction
 jmx = 256             !number of grid points along y direction
-kmx = 64              !number of grid points along z direction, the primary domain decomposition.
+kmx = 4              !number of grid points along z direction, the primary domain decomposition.
 
 micell = 8            !number of marker particles of ions per cell 
 mecell = 8            !number of marker particles of electron per cell

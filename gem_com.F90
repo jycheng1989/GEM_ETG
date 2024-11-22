@@ -45,6 +45,7 @@ module gem_com
    real :: pint_start_tm, pint_end_tm, pint_tot_tm
    real :: cint_start_tm, cint_end_tm, cint_tot_tm
    real :: lorentz_start_tm, lorentz_end_tm, lorentz_tot_tm
+   real :: colli_start_tm, colli_end_tm, colli_tot_tm
    real :: grid1_ion_start_tm, grid1_ion_end_tm, grid1_ion_tot_tm
    real :: grid1_electron_start_tm, grid1_electron_end_tm, grid1_electron_tot_tm
    real :: init_pmove_start_tm, init_pmove_end_tm, init_pmove_tot_tm
