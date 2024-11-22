@@ -667,6 +667,7 @@ subroutine ppush(n,ns)
    & nopi,kcnt, lr0, lx, ly, lz, peritr, pi, tor, vexbsw, vparsw, vwidth, q, mims, &
    & ex, ey, ez, delbx, delby, dpdz, dadz, apar, lr, nonlin, pzcrit,ran2,iseed,pi2
    use gem_com, only : ppush_start_tm, ppush_end_tm, init_pmove_start_tm, init_pmove_end_tm, pmove_start_tm, pmove_end_tm
+   use gem_com, only : randpool, npool
    use gem_pputil,  only : init_pmove, pmove, ppexit, end_pmove !subroutine names
    use gem_equil,   only : delz, dr, dth, ildu, iperidf, nr,q0, r0, rin, thfnz, dbdr, dbdth, &
    & grcgt, bfld, radius, dydr, qhat, gr, gxdgy, curvbz, bdcrvb, grdgt,f, jfn, &
@@ -746,7 +747,7 @@ subroutine ppush(n,ns)
 
       rhog=sqrt(2.*b*mu(ns,m)*mims(ns))/(q(ns)*b)*iflr
 
-      gdum = ran2(iseed)*pi2
+      gdum = randpool(modulo(m-1, npool))*pi2
       do l=1,lr(ns) !yjhu added, March 8, 2019
          gphase = l*pi2/lr(ns)+gdum
          rhox(l) = cos(gphase)*rhog*grp
@@ -950,6 +951,7 @@ subroutine cpush(n,ns)
    & grcgt, bfld, radius, dydr, qhat, gr, gxdgy, curvbz, bdcrvb, grdgt, f, jfn, psip, &
    & psi, t0s, capts, capns, xn0s, psip2, dipdr, phincp, vparsp, tgis, sf, cn0s, rmaj0
    use gem_com, only : cpush_start_tm, cpush_end_tm, init_pmove_start_tm, init_pmove_end_tm, pmove_start_tm, pmove_end_tm
+   use gem_com, only : randpool, npool
    use gem_pputil, only : init_pmove, pmove, end_pmove, ppexit
    implicit none
    INTEGER :: n
@@ -1042,7 +1044,7 @@ subroutine cpush(n,ns)
 
       rhog=sqrt(2.*b*mu(ns,m)*mims(ns))/(q(ns)*b)*iflr
 
-      gdum = ran2(iseed)*pi2
+      gdum = randpool(modulo(m-1, npool))*pi2
       do l=1,lr(ns) !yjhu added, March 8, 2019
          gphase = l*pi2/lr(ns)+gdum
          rhox(l) = cos(gphase)*rhog*grp
@@ -1410,7 +1412,7 @@ subroutine grid1(ip,n)
 
          rhog=sqrt(2.*b*mu(ns,m)*mims(ns))/(q(ns)*b)*iflr
 
-         gdum = ran2(iseed)*pi2
+         gdum = randpool(modulo(m-1, npool))*pi2
          do l=1,lr(ns) !yjhu added, March 8, 2019
             gphase = l*pi2/lr(ns)+gdum
             rhox(l) = cos(gphase)*rhog*grp
@@ -1532,7 +1534,7 @@ subroutine grid1(ip,n)
       if(electron_flr.eqv..true.) then !yjhu
          rhog=sqrt(2.*b*mue3(m)*emass)/(b) !yjhu
          !write(*,*) 'rhoge=', rhog
-         gdum = ran2(iseed)*pi2
+         gdum = randpool(modulo(m-1, npool))*pi2
          do l=1,lr_e !yjhu added, March 8, 2019
             gphase = l*pi2/lr_e+gdum
             rhox(l) = cos(gphase)*rhog*grp
@@ -3477,7 +3479,7 @@ subroutine pint
 
       if(electron_flr.eqv..true.) then !yjhu
          rhog=sqrt(2.*b*mue2(m)*emass)/(b) !yjhu
-         gdum = ran2(iseed)*pi2
+         gdum = randpool(modulo(m-1, npool))*pi2
          do l=1,lr_e !yjhu added, March 8, 2019
             gphase = l*pi2/lr_e+gdum
             rhox(l) = cos(gphase)*rhog*grp
@@ -3865,7 +3867,7 @@ subroutine cint(n)
 
       if(electron_flr.eqv..true.) then !yjhu
          rhog=sqrt(2.*b*mue2(m)*emass)/(b) !yjhu
-         gdum = ran2(iseed)*pi2
+         gdum = randpool(modulo(m-1, npool))*pi2
          do l=1,lr_e !yjhu added, March 8, 2019
             gphase = l*pi2/lr_e+gdum
             rhox(l) = cos(gphase)*rhog*grp
@@ -4682,6 +4684,7 @@ subroutine jpar0(ip,n,it,itp)
    & electron_flr, emass, gclr, grid_comm, im, jm, imx, jmx, isg, isuni, kcnt, lr0, lr_e, &
    & lx, ly, mme, mykm, n0e, nonline, pi, qel, tor, vwidthe, x3e, y3e, z3e, u3e, mue3, &
    & upa0, upa00, den0apa, upa0t,pi2,ran2,iseed !intent(out)
+   use gem_com, only : randpool, npool
    use gem_equil, only : gr, cn0e, delz, dr, dth, eldu, nr, q0, rin, tge, t0e, thfnz, xn0e,&
    & bfld, gxdgy, qhat, grcgt, radius, dbdr, jfn, psip, f
 
@@ -4775,7 +4778,7 @@ subroutine jpar0(ip,n,it,itp)
       if(electron_flr.eqv..true.) then !yjhu
          rhog=sqrt(2.*b*mue3(m)*emass)/(b) !yjhu
          !write(*,*) 'rhog_e in jpar0=', rhog
-         gdum = ran2(iseed)*pi2
+         gdum = randpool(modulo(m-1, npool))*pi2
          do l=1,lr_e !yjhu added, March 8, 2019
             gphase = l*pi2/lr_e+gdum
             rhox(l) = cos(gphase)*rhog*grp
@@ -7343,7 +7346,7 @@ subroutine colli(ip,n)
       !         if(x<0.3)dum=0.0
       do icol = 1,ncol
          ptch =ptch-dum*ptch+sqrt(dum*(1.-ptch*ptch)) &
-            *sign(1.0,ran2(iseed)-0.5)
+            *sign(1.0,randpool(modulo(m-1, npool))-0.5)
          ptch = min(ptch,0.999)
          ptch = max(ptch,-0.999)
       end do

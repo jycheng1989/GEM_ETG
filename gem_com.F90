@@ -194,6 +194,8 @@ module gem_com
    character(len=*) outdir
    parameter(outdir='./out/')
 
+   integer :: npool = 10000
+   real,dimension(:),allocatable :: randpool
    !real :: ran2,revers
    !integer :: mod
    !real :: amod
@@ -285,6 +287,7 @@ contains
       ALLOCATE( weightp(0:nxpp),weightm(0:nxpp))
       ALLOCATE( weightpn(0:nxpp),weightmn(0:nxpp))
 
+      allocate(randpool(0:npool-1))
       !Blending variable
 !    ALLOCATE(pol(1:nb,0:imx-1,0:jmx-1,0:kmx),pfac(0:imx-1,0:jmx-1), &
 !         pmtrx(0:imx-1,0:jmx-1,1:nb,1:nb), &
