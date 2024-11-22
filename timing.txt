@@ -1,0 +1,19 @@
+ total time = 91.300989917000152
+ accumulate time = 18.06374556350238
+ ampere time = 1.760079886245876
+ poisson time = 1.9660673612452229
+ field time = 0.33471796499725315
+ diagnose time = 0.16681031850112049
+ reporter time = 0.50344575399958558
+ push time = 68.506087105997722
+ =============================================
+ ppush time = 14.102277974251592
+ cpush time = 15.159992370001419
+ pint time = 18.164043446498908
+ cint time = 18.929428585499409
+ lorentz time = 0.
+ colli time= 0.
+ grid1 ion time = 8.7882011907513515
+ grid1 electron time = 8.0114495010020619
+ init pmove time = 0.35436871899582911
+ pmove time = 3.48603024867770728E-2
