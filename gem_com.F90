@@ -213,6 +213,7 @@ contains
       allocate(rwx(nsmx,4),rwy(nsmx,4))
       allocate(mm(nsmx),tmm(nsmx),lr(nsmx))
       allocate(tets(nsmx),mims(nsmx),q(nsmx))
+      !$acc enter data create(lr,mims,q)
       allocate(kapn(nsmx),kapt(nsmx))
       allocate(time(0:nmx))
       allocate(yyamp(jmx,0:4),yyre(jmx,0:4),yyim(jmx,0:4),camp(0:6,0:50000),campf(0:6,0:nfreq-1))
@@ -248,12 +249,15 @@ contains
       allocate( x3(1:mmx,nsmx),y3(1:mmx,nsmx),z3(1:mmx,nsmx),u3(1:mmx,nsmx))
       allocate( w2(1:mmx,nsmx),w3(1:mmx,nsmx))
 
+!$acc enter data create(mu,eki,x2,y2,z2,u2,x3,y3,z3,u3,w2,w3)
+
       allocate( mue(1:mmxe),eke(1:mmxe))
       allocate( x2e(1:mmxe),y2e(1:mmxe),z2e(1:mmxe),u2e(1:mmxe),mue2(1:mmxe))
       allocate( x3e(1:mmxe),y3e(1:mmxe),z3e(1:mmxe),u3e(1:mmxe),mue3(1:mmxe))
       allocate( w2e(1:mmxe),w3e(1:mmxe))
       allocate( ipass(1:mmxe), index(1:mmxe))
 
+!$acc enter data create(mue,eke,x2e,y2e,z2e,u2e,mue2,x3e,y3e,z3e,u3e,mue3,w2e,w3e,ipass,index)
       !              Various diagnostic arrays and scalars
       !    plotting constants
 
@@ -288,6 +292,7 @@ contains
       ALLOCATE( weightpn(0:nxpp),weightmn(0:nxpp))
 
       allocate(randpool(0:npool-1))
+!$acc enter data create(randpool)
       !Blending variable
 !    ALLOCATE(pol(1:nb,0:imx-1,0:jmx-1,0:kmx),pfac(0:imx-1,0:jmx-1), &
 !         pmtrx(0:imx-1,0:jmx-1,1:nb,1:nb), &

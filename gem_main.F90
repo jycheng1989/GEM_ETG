@@ -672,7 +672,7 @@ subroutine init
 !$acc update device( t0s,xn0s,capts,capns,vpars,vparsp)
 !$acc update device( cn0s,n0smax,tgis)
 
-   !      return
+!$acc update device(lr,mims,q,randpool)
 end subroutine init
 
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -926,6 +926,8 @@ subroutine ppush(n,ns)
 
    np_old=mm(ns)
 
+!$acc update host(x2,x3,y2,y3,z2,z3,u2,u3,w2,w3,mu,eki)
+
    init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
    call init_pmove(z3(:,ns),np_old,lz,ierr)
    init_pmove_end_tm = init_pmove_end_tm + MPI_WTIME()
@@ -959,7 +961,7 @@ subroutine ppush(n,ns)
    pmove_end_tm = pmove_end_tm + MPI_WTIME()
    call end_pmove(ierr)
    mm(ns)=np_new
-
+!$acc update device(x2,x3,y2,y3,z2,z3,u2,u3,w2,w3,mu,eki)
    !      return
 end subroutine ppush
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1294,6 +1296,8 @@ subroutine cpush(n,ns)
    !      pfl(1,n)=pfltemp/( real(tmm(1)) )
    !      efl(1,n)=mims(ns)/tets(1)*efltemp/( real(tmm(1)) )
 
+!$acc update host(x2,x3,y2,y3,z2,z3,u2,u3,w2,w3,mu,eki)
+
    np_old=mm(ns)
    call MPI_BARRIER(MPI_COMM_WORLD,ierr)
    init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
@@ -1330,9 +1334,7 @@ subroutine cpush(n,ns)
    pmove_end_tm = pmove_end_tm + MPI_WTIME()
    call end_pmove(ierr)
    mm(ns)=np_new
-   !     write(*,*)MyId,mm(ns)
-
-   !      return
+!$acc update device(x2,x3,y2,y3,z2,z3,u2,u3,w2,w3,mu,eki)
 end subroutine cpush
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -3223,10 +3225,9 @@ subroutine loadi(ns)
    call pmove(eki(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
-   !
    call end_pmove(ierr)
    mm(ns)=np_new
-
+!$acc update device(x2,x3,y2,y3,z2,z3,u2,u3,w2,w3,mu,eki)
    !      return
 end subroutine loadi
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -3785,6 +3786,8 @@ subroutine pint
    aven = aven/(noen+0.1)
    avptch = avptch/(noen+0.1)
 
+!$acc update host(x2e,x3e,y2e,y3e,z2e,z3e,u2e,u3e,w2e,w3e,mue2,mue3,mue,eke,ipass,index)
+
    np_old=mme
    init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
    call init_pmove(z3e,np_old,lz,ierr)
@@ -3831,7 +3834,7 @@ subroutine pint
 
    call end_pmove(ierr)
    mme=np_new
-
+!$acc update device(x2e,x3e,y2e,y3e,z2e,z3e,u2e,u3e,w2e,w3e,mue2,mue3,mue,eke,ipass,index)
    !      return
 end subroutine pint
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -4256,7 +4259,7 @@ subroutine cint(n)
    end do
 
    np_old=mme
-
+!$acc update host(x2e,x3e,y2e,y3e,z2e,z3e,u2e,u3e,w2e,w3e,mue2,mue3,mue,eke,ipass,index)
    init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
    call init_pmove(z3e,np_old,lz,ierr)
    init_pmove_end_tm = init_pmove_end_tm + MPI_WTIME()
@@ -4300,7 +4303,7 @@ subroutine cint(n)
    pmove_end_tm = pmove_end_tm + MPI_WTIME()
    call end_pmove(ierr)
    mme=np_new
-
+!$acc update device(x2e,x3e,y2e,y3e,z2e,z3e,u2e,u3e,w2e,w3e,mue2,mue3,mue,eke,ipass,index)
    !      return
 end subroutine cint
 
@@ -6059,7 +6062,9 @@ subroutine ldel
    !
    call end_pmove(ierr)
    mme=np_new
-
+   ipass=0.0
+   index=0.0
+!$acc update device(x2e,x3e,y2e,y3e,z2e,z3e,u2e,u3e,w2e,w3e,mue2,mue3,mue,eke,ipass,index)
    !      return
 end subroutine ldel
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
