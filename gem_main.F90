@@ -685,7 +685,7 @@ subroutine ppush(n,ns)
    & ex, ey, ez, delbx, delby, dpdz, dadz, apar, lr, nonlin, pzcrit,ran2,iseed,pi2
    use gem_com, only : ppush_start_tm, ppush_end_tm, init_pmove_start_tm, init_pmove_end_tm, pmove_start_tm, pmove_end_tm
    use gem_com, only : randpool, npool
-   use gem_pputil,  only : init_pmove, pmove, ppexit, end_pmove !subroutine names
+   use gem_pputil,  only : test_init_pmove, test_pmove, ppexit, end_pmove !subroutine names
    use gem_equil,   only : delz, dr, dth, ildu, iperidf, nr,q0, r0, rin, thfnz, dbdr, dbdth, &
    & grcgt, bfld, radius, dydr, qhat, gr, gxdgy, curvbz, bdcrvb, grdgt,f, jfn, &
    & psip, psi, t0s, capts, capns, xn0s, phincp, vparsp, psip2, dipdr, tgis,sf, itube
@@ -926,42 +926,39 @@ subroutine ppush(n,ns)
 
    np_old=mm(ns)
 
-!$acc update host(x2,x3,y2,y3,z2,z3,u2,u3,w2,w3,mu,eki)
-
    init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
-   call init_pmove(z3(:,ns),np_old,lz,ierr)
+   call test_init_pmove(z3(:,ns),np_old,lz,ierr)
    init_pmove_end_tm = init_pmove_end_tm + MPI_WTIME()
 
    pmove_start_tm = pmove_start_tm + MPI_WTIME()
-   call pmove(x2(:,ns),np_old,np_new,ierr)
+   call test_pmove(x2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(x3(:,ns),np_old,np_new,ierr)
+   call test_pmove(x3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y2(:,ns),np_old,np_new,ierr)
+   call test_pmove(y2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y3(:,ns),np_old,np_new,ierr)
+   call test_pmove(y3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z2(:,ns),np_old,np_new,ierr)
+   call test_pmove(z2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z3(:,ns),np_old,np_new,ierr)
+   call test_pmove(z3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u2(:,ns),np_old,np_new,ierr)
+   call test_pmove(u2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u3(:,ns),np_old,np_new,ierr)
+   call test_pmove(u3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w2(:,ns),np_old,np_new,ierr)
+   call test_pmove(w2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w3(:,ns),np_old,np_new,ierr)
+   call test_pmove(w3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(mu(:,ns),np_old,np_new,ierr)
+   call test_pmove(mu(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
-   call pmove(eki(:,ns),np_old,np_new,ierr)
+   call test_pmove(eki(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
    pmove_end_tm = pmove_end_tm + MPI_WTIME()
    call end_pmove(ierr)
    mm(ns)=np_new
-!$acc update device(x2,x3,y2,y3,z2,z3,u2,u3,w2,w3,mu,eki)
    !      return
 end subroutine ppush
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -977,7 +974,7 @@ subroutine cpush(n,ns)
    & psi, t0s, capts, capns, xn0s, psip2, dipdr, phincp, vparsp, tgis, sf, cn0s, rmaj0
    use gem_com, only : cpush_start_tm, cpush_end_tm, init_pmove_start_tm, init_pmove_end_tm, pmove_start_tm, pmove_end_tm
    use gem_com, only : randpool, npool
-   use gem_pputil, only : init_pmove, pmove, end_pmove, ppexit
+   use gem_pputil, only : test_init_pmove, test_pmove, end_pmove, ppexit
    implicit none
    INTEGER :: n
    real :: phip,exp1,eyp,ezp,delbxp,delbyp,dpdzp,dadzp,aparp
@@ -1296,45 +1293,43 @@ subroutine cpush(n,ns)
    !      pfl(1,n)=pfltemp/( real(tmm(1)) )
    !      efl(1,n)=mims(ns)/tets(1)*efltemp/( real(tmm(1)) )
 
-!$acc update host(x2,x3,y2,y3,z2,z3,u2,u3,w2,w3,mu,eki)
 
    np_old=mm(ns)
    call MPI_BARRIER(MPI_COMM_WORLD,ierr)
    init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
-   call init_pmove(z3(:,ns),np_old,lz,ierr)
+   call test_init_pmove(z3(:,ns),np_old,lz,ierr)
    init_pmove_end_tm = init_pmove_end_tm + MPI_WTIME()
    
    pmove_start_tm = pmove_start_tm + MPI_WTIME()
-   call pmove(x2(:,ns),np_old,np_new,ierr)
+   call test_pmove(x2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(x3(:,ns),np_old,np_new,ierr)
+   call test_pmove(x3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y2(:,ns),np_old,np_new,ierr)
+   call test_pmove(y2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y3(:,ns),np_old,np_new,ierr)
+   call test_pmove(y3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z2(:,ns),np_old,np_new,ierr)
+   call test_pmove(z2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z3(:,ns),np_old,np_new,ierr)
+   call test_pmove(z3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u2(:,ns),np_old,np_new,ierr)
+   call test_pmove(u2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u3(:,ns),np_old,np_new,ierr)
+   call test_pmove(u3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w2(:,ns),np_old,np_new,ierr)
+   call test_pmove(w2(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w3(:,ns),np_old,np_new,ierr)
+   call test_pmove(w3(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(mu(:,ns),np_old,np_new,ierr)
+   call test_pmove(mu(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
-   call pmove(eki(:,ns),np_old,np_new,ierr)
+   call test_pmove(eki(:,ns),np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
    pmove_end_tm = pmove_end_tm + MPI_WTIME()
    call end_pmove(ierr)
    mm(ns)=np_new
-!$acc update device(x2,x3,y2,y3,z2,z3,u2,u3,w2,w3,mu,eki)
 end subroutine cpush
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -3786,55 +3781,53 @@ subroutine pint
    aven = aven/(noen+0.1)
    avptch = avptch/(noen+0.1)
 
-!$acc update host(x2e,x3e,y2e,y3e,z2e,z3e,u2e,u3e,w2e,w3e,mue2,mue3,mue,eke,ipass,index)
 
    np_old=mme
    init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
-   call init_pmove(z3e,np_old,lz,ierr)
+   call test_init_pmove(z3e,np_old,lz,ierr)
    init_pmove_end_tm = init_pmove_end_tm + MPI_WTIME()
 
    pmove_start_tm = pmove_start_tm + MPI_WTIME()
-   call pmove(x2e,np_old,np_new,ierr)
+   call test_pmove(x2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(x3e,np_old,np_new,ierr)
+   call test_pmove(x3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y2e,np_old,np_new,ierr)
+   call test_pmove(y2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y3e,np_old,np_new,ierr)
+   call test_pmove(y3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z2e,np_old,np_new,ierr)
+   call test_pmove(z2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z3e,np_old,np_new,ierr)
+   call test_pmove(z3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u2e,np_old,np_new,ierr)
+   call test_pmove(u2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u3e,np_old,np_new,ierr)
+   call test_pmove(u3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w2e,np_old,np_new,ierr)
+   call test_pmove(w2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w3e,np_old,np_new,ierr)
+   call test_pmove(w3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(mue2,np_old,np_new,ierr)
+   call test_pmove(mue2,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(mue3,np_old,np_new,ierr)
-   if (ierr.ne.0) call ppexit
-
-   call pmove(index,np_old,np_new,ierr)
-   if (ierr.ne.0) call ppexit
-   call pmove(ipass,np_old,np_new,ierr)
+   call test_pmove(mue3,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
-   call pmove(mue,np_old,np_new,ierr)
+   call test_pmove(index,np_old,np_new,ierr)
+   if (ierr.ne.0) call ppexit
+   call test_pmove(ipass,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
-   call pmove(eke,np_old,np_new,ierr)
+   call test_pmove(mue,np_old,np_new,ierr)
+   if (ierr.ne.0) call ppexit
+
+   call test_pmove(eke,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
    pmove_end_tm = pmove_end_tm + MPI_WTIME()
 
    call end_pmove(ierr)
    mme=np_new
-!$acc update device(x2e,x3e,y2e,y3e,z2e,z3e,u2e,u3e,w2e,w3e,mue2,mue3,mue,eke,ipass,index)
    !      return
 end subroutine pint
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -4259,51 +4252,48 @@ subroutine cint(n)
    end do
 
    np_old=mme
-!$acc update host(x2e,x3e,y2e,y3e,z2e,z3e,u2e,u3e,w2e,w3e,mue2,mue3,mue,eke,ipass,index)
    init_pmove_start_tm = init_pmove_start_tm + MPI_WTIME()
-   call init_pmove(z3e,np_old,lz,ierr)
+   call test_init_pmove(z3e,np_old,lz,ierr)
    init_pmove_end_tm = init_pmove_end_tm + MPI_WTIME()
 
    pmove_start_tm = pmove_start_tm + MPI_WTIME()
-   call pmove(x2e,np_old,np_new,ierr)
+   call test_pmove(x2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(x3e,np_old,np_new,ierr)
+   call test_pmove(x3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
+   call test_pmove(y2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y2e,np_old,np_new,ierr)
+   call test_pmove(y3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(y3e,np_old,np_new,ierr)
+   call test_pmove(z2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z2e,np_old,np_new,ierr)
+   call test_pmove(z3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(z3e,np_old,np_new,ierr)
+   call test_pmove(u2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u2e,np_old,np_new,ierr)
+   call test_pmove(u3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(u3e,np_old,np_new,ierr)
+   call test_pmove(w2e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w2e,np_old,np_new,ierr)
+   call test_pmove(w3e,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(w3e,np_old,np_new,ierr)
+   call test_pmove(mue2,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(mue2,np_old,np_new,ierr)
-   if (ierr.ne.0) call ppexit
-   call pmove(mue3,np_old,np_new,ierr)
-   if (ierr.ne.0) call ppexit
-
-   call pmove(index,np_old,np_new,ierr)
-   if (ierr.ne.0) call ppexit
-   call pmove(ipass,np_old,np_new,ierr)
+   call test_pmove(mue3,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
 
-   call pmove(mue,np_old,np_new,ierr)
+   call test_pmove(index,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
-   call pmove(eke,np_old,np_new,ierr)
+   call test_pmove(ipass,np_old,np_new,ierr)
+   if (ierr.ne.0) call ppexit
+
+   call test_pmove(mue,np_old,np_new,ierr)
+   if (ierr.ne.0) call ppexit
+   call test_pmove(eke,np_old,np_new,ierr)
    if (ierr.ne.0) call ppexit
    pmove_end_tm = pmove_end_tm + MPI_WTIME()
    call end_pmove(ierr)
    mme=np_new
-!$acc update device(x2e,x3e,y2e,y3e,z2e,z3e,u2e,u3e,w2e,w3e,mue2,mue3,mue,eke,ipass,index)
    !      return
 end subroutine cint
 

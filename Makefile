@@ -3,7 +3,7 @@ OBJS = $(SRCS:.F90=.o)
 DFFTPACK = /global/homes/j/jycheng/Software/dfftpack/libdfftpack.a
 F90 = ftn
 
-OPT = -O3 -r8 -Kieee -llapack -lblas -cpp -acc -Minfo=acc 
+OPT = -O3 -r8 -Kieee -llapack -lblas -cpp -acc -Minfo=acc -DGPU -DOPENACC 
 LDFLAGS = $(DFFTPACK)
 
 .PHONY: all clean run
