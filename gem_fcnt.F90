@@ -8,7 +8,7 @@
 !-----------------------------------------------------------------------
 !v
 real function revers(num,n)
-   integer :: num,n,inum,iquot,irem
+   integer(kind=selected_int_kind(18)) :: num,n,inum,iquot,irem
    real :: rev,power
    !    function to reverse the digits of num in base n.
 

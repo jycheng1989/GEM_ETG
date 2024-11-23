@@ -235,7 +235,7 @@ subroutine init
    character(len=62) dumchar
    INTEGER :: i,j,k,m,n,ns,idum,i1,j1,k1
    INTEGER :: lr1
-   INTEGER*8 :: mm1, mm2
+   INTEGER(selected_int_kind(18)) :: mm1, mm2
    integer :: errcode !yjhu
    real :: mims1,tets1,q1,kappan,kappat,r,qr,th,cost,dum,zdum
    real :: dbdrp,dbdtp,grcgtp,bfldp,fp,radiusp,dydrp,qhatp,psipp
@@ -293,8 +293,8 @@ subroutine init
      stop
    endif
 
-   mm1 = int(imx,8) * int(jmx,8) * int(kmx,8) * int(micell,8)
-   mm2 = int(imx,8) * int(jmx,8) * int(kmx,8) * int(mecell,8)
+   mm1 = int(imx,selected_int_kind(18)) * int(jmx,selected_int_kind(18)) * int(kmx,selected_int_kind(18)) * int(micell,selected_int_kind(18))
+   mm2 = int(imx,selected_int_kind(18)) * int(jmx,selected_int_kind(18)) * int(kmx,selected_int_kind(18)) * int(mecell,selected_int_kind(18))
    mmx=int(real(mm1)/real(kmx*ntube)*5.)
    mmxe=int(real(mm2)/real(kmx*ntube)*5.)
    if(myid==0) write(*,*)'mm1,mm2,mmx,mmxe',mm1,mm2,mmx,mmxe
@@ -1852,7 +1852,7 @@ subroutine parperp(vpar,vperp2,m,pi,cnt,MyId)
 
    INTERFACE
       real function revers(num,n)
-         integer :: num,n
+         integer(selected_int_kind(18)) :: num,n
       end function revers
    END INTERFACE
 
@@ -1864,9 +1864,8 @@ subroutine parperp(vpar,vperp2,m,pi,cnt,MyId)
    data d1,d2,d3/1.432788,0.189269,0.001308/
 
 
-   r1=revers(m+MyId*cnt,7)
-   r2=revers(m+MyId*cnt,11)
-
+   r1=revers(int(m,selected_int_kind(18))+int(MyId,selected_int_kind(18))*int(cnt,selected_int_kind(18)),int(7,selected_int_kind(18)))
+   r2=revers(int(m,selected_int_kind(18))+int(MyId,selected_int_kind(18))*int(cnt,selected_int_kind(18)),int(11,selected_int_kind(18)))
 
    !.....quiet start---see denavit pf '71(?) & abramowitz hand book
    !.....fibonacci start---see denavit comm. pla. phy. & con. fus. '81
@@ -3163,9 +3162,8 @@ subroutine loadi(ns)
          mu(m,ns)=0.5*vperp2/b*ter
          eki(m,ns) = mu(m,ns)*b+0.5*mims(ns)*u2(m,ns)**2
          myavgv=myavgv+u2(m,ns)
-
          !    LINEAR: perturb w(m,ns) to get linear growth...
-         w2(m,ns)=2.*amp*(revers(MyId*cnt+m,13)-0.5) !(ran2(iseed) - 0.5 )
+         w2(m,ns)=2.*amp*(revers(int(MyId,selected_int_kind(18)) * int(cnt,selected_int_kind(18)) + int(m,selected_int_kind(18)), int(13,selected_int_kind(18)))-0.5) !(ran2(iseed) - 0.5 )
 !        w2(m,ns)=2.*amp*sin(pi2/ly*y2(m,ns))*exp(-(z2(m,ns)-lz/2)**2/(lz/8)**2)*exp(-(x2(m,ns)-0.4*lx)**2/(lx/8)**2)
          if(ns==2)w2(m,ns) = 0.
          myavgw=myavgw+w2(m,ns)
@@ -5985,7 +5983,7 @@ subroutine ldel
          myavgv=myavgv+u2e(m)
 
          !    LINEAR: perturb w(m) to get linear growth...
-         w2e(m)=2.*amp*(revers(MyId*cnt+m,13)-0.5) !(ran2(iseed) - 0.5 )
+         w2e(m)=2.*amp*(revers(int(MyId,selected_int_kind(18))*int(cnt,selected_int_kind(18))+int(m,selected_int_kind(18)),int(13,selected_int_kind(18)))-0.5) !(ran2(iseed) - 0.5 )
 !        w2e(m)=2.*amp*sin(2*pi2/ly*y2e(m))*exp(-(z2e(m)-lz/2)**2/(lz/8)**2) &
 !              +2.*amp*sin(3*pi2/ly*y2e(m))*exp(-(z2e(m)-lz/2)**2/(lz/8)**2) &
 !              +2.*amp*sin(4*pi2/ly*y2e(m))*exp(-(z2e(m)-lz/2)**2/(lz/8)**2) &

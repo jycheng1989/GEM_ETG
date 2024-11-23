@@ -9,7 +9,7 @@ module gem_com
 
    INTERFACE
       real function revers(num,n)
-         integer :: num, n !yjhu added
+         integer(selected_int_kind(18)) :: num, n !yjhu added
       end function revers
 
       real function ran2(i)
@@ -65,7 +65,7 @@ module gem_com
    integer :: mme,mmb
    REAL, dimension(:,:),allocatable :: rwx,rwy
    INTEGER,dimension(:),allocatable :: mm,lr
-   INTEGER*8,dimension(:),allocatable :: tmm
+   INTEGER(selected_int_kind(18)),dimension(:),allocatable :: tmm
    REAL,dimension(:),allocatable :: tets,mims,q
    REAL,dimension(:),allocatable :: kapn, kapt
    INTEGER :: timestep,im,jm,km,mykm,iseed,nrst,nfreq,isft,mynf,ifskp,iphbf,iapbf,idpbf
