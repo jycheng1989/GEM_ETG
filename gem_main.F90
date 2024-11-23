@@ -686,12 +686,15 @@ subroutine ppush(n,ns)
    real :: rhox(lr(ns)),rhoy(lr(ns)),rx1,rx2,ry1,ry2,gphase,gdum !yjhu
    real :: grp,gxdgyp,psp,pzp,vncp,vparspp,psip2p,bdcrvbp,curvbzp,dipdrp !yjhu
    integer :: mynopi
+   integer :: mm_tmp
 
    pidum = 1./(pi*2)**1.5*vwidth**3
    mynopi = 0
    nopi(ns) = 0
    ppush_start_tm = ppush_start_tm+MPI_WTIME()
-   do m=1,mm(ns)
+   mm_tmp = mm(ns)
+   !$acc parallel loop private(rhox, rhoy)
+   do m=1,mm_tmp
       r=x2(m,ns)-0.5*lx+lr0
       k = int(z2(m,ns)/delz)
       wz0 = ((k+1)*delz-z2(m,ns))/delz
@@ -748,6 +751,8 @@ subroutine ppush(n,ns)
       rhog=sqrt(2.*b*mu(m,ns)*mims(ns))/(q(ns)*b)*iflr
 
       gdum = randpool(modulo(m-1, npool))*pi2
+      
+      !$acc loop seq
       do l=1,lr(ns) !yjhu added, March 8, 2019
          gphase = l*pi2/lr(ns)+gdum
          rhox(l) = cos(gphase)*rhog*grp
@@ -765,7 +770,8 @@ subroutine ppush(n,ns)
       dpdzp = 0.
       dadzp = 0.
       aparp = 0.
-
+      
+      !$acc loop seq
       do l=1,lr(ns) !yjhu added
          xs=x2(m,ns)+rhox(l) !rwx(1,l)*rhog
          yt=y2(m,ns)+rhoy(l) !(rwy(1,l)+sz*rwx(1,l))*rhog
@@ -971,6 +977,7 @@ subroutine cpush(n,ns)
 !yjhu  real :: grp,gxdgyp,rhox(4),rhoy(4),psp,pzp,vncp,vparspp,psip2p,bdcrvbp,curvbzp,dipdrp
    real :: rhox(lr(ns)),rhoy(lr(ns)),rhoz(lr(ns)),rx1,rx2,ry1,ry2,gphase,gdum !yjhu
    real :: grp,gxdgyp,psp,pzp,vncp,vparspp,psip2p,bdcrvbp,curvbzp,dipdrp !yjhu
+   integer :: mm_ns
    sbuf(1:10) = 0.
    rbuf(1:10) = 0.
    myavewi = 0.
@@ -987,7 +994,9 @@ subroutine cpush(n,ns)
    pidum = 1./(pi*2)**1.5*vwidth**3
 
    cpush_start_tm = cpush_start_tm + MPI_WTIME()
-   do m=1,mm(ns)
+   mm_ns = mm(ns)
+   !$acc parallel loop private(rhox, rhoy)
+   do m=1,mm_ns
       r=x3(m,ns)-0.5*lx+lr0
 
       k = int(z3(m,ns)/delz)
@@ -1045,6 +1054,7 @@ subroutine cpush(n,ns)
       rhog=sqrt(2.*b*mu(m,ns)*mims(ns))/(q(ns)*b)*iflr
 
       gdum = randpool(modulo(m-1, npool))*pi2
+      !$acc loop seq
       do l=1,lr(ns) !yjhu added, March 8, 2019
          gphase = l*pi2/lr(ns)+gdum
          rhox(l) = cos(gphase)*rhog*grp
@@ -1061,6 +1071,7 @@ subroutine cpush(n,ns)
       dadzp = 0.
       aparp = 0.
 
+      !$acc loop seq
       do l=1,lr(ns)
          xs=x3(m,ns)+rhox(l) !rwx(1,l)*rhog
          yt=y3(m,ns)+rhoy(l) !(rwy(1,l)+sz*rwx(1,l))*rhog
@@ -1189,9 +1200,13 @@ subroutine cpush(n,ns)
       k = int(x3(m,ns)/(lx/nsubd))
       k = min(k,nsubd-1)
       k = k+1
+      !$acc atomic update
       mypfl_es(k)=mypfl_es(k) + w3old*(eyp)
+      !$acc atomic update
       mypfl_em(k)=mypfl_em(k) + w3old*(vpar*delbxp/b)
+      !$acc atomic update
       myefl_es(k)=myefl_es(k) + vfac*w3old*(eyp)
+      !$acc atomic update
       myefl_em(k)=myefl_em(k) + vfac*w3old*(vpar*delbxp/b)
       myke=myke + vfac*w3(m,ns)
       mynos=mynos + w3(m,ns)
@@ -1358,6 +1373,7 @@ subroutine grid1(ip,n)
 !yjhu  real :: grp,gxdgyp,rhox(4),rhoy(4)
    real :: grp,gxdgyp,rhox(maxval(lr)),rhoy(maxval(lr)) !yjhu added
    real :: x000,x001,x010,x011,x100,x101,x110,x111
+   integer :: mm_tmp_ion, mm_tmp_electron
    rho=0.
    jion = 0.
    mydte = 0.
@@ -1370,7 +1386,9 @@ subroutine grid1(ip,n)
       myjpar = 0.
       mydti = 0.
       grid1_ion_start_tm = grid1_ion_start_tm + MPI_WTIME()
-      do m=1,mm(ns)
+      mm_tmp_ion=mm(ns)
+      !$acc parallel loop private(rhox, rhoy)
+      do m=1,mm_tmp_ion
 !yjhu        dv=real(lr(1))*(dx*dy*dz)
          dv=real(lr(ns))*(dx*dy*dz) !yjhu added
          r=x3(m,ns)-0.5*lx+lr0
@@ -1413,6 +1431,7 @@ subroutine grid1(ip,n)
          rhog=sqrt(2.*b*mu(m,ns)*mims(ns))/(q(ns)*b)*iflr
 
          gdum = randpool(modulo(m-1, npool))*pi2
+         !$acc loop seq
          do l=1,lr(ns) !yjhu added, March 8, 2019
             gphase = l*pi2/lr(ns)+gdum
             rhox(l) = cos(gphase)*rhog*grp
@@ -1423,7 +1442,7 @@ subroutine grid1(ip,n)
          wght=w3(m,ns)/dv
 
          vpar = u3(m,ns) !linearly correct
-
+         !$acc loop seq
          do l=1,lr(ns)
             xt=x3(m,ns)+rhox(l) !rwx(1,l)*rhog
             yt=y3(m,ns)+rhoy(l) !(rwy(1,l)+sz*rwx(1,l))*rhog
@@ -1434,9 +1453,12 @@ subroutine grid1(ip,n)
             i=int(xt/dx+0.5)
             j=int(yt/dy+0.5)
             k=int(z3(m,ns)/dz+0.5)-gclr*kcnt
-
+            
+            !$acc atomic update
             myden(i,j,k) = myden(i,j,k) + wght
+            !$acc atomic update
             myjpar(i,j,k) = myjpar(i,j,k)+wght*vpar
+            !$acc atomic update
             mydti(i,j,k) = mydti(i,j,k)+wght*vfac
 
          enddo !yjhu N-point in gyo-phase
@@ -1493,7 +1515,9 @@ subroutine grid1(ip,n)
    myupar = 0.
    if(idg.eq.1)write(*,*)'enter electron grid1'
    grid1_electron_start_tm = grid1_electron_start_tm + MPI_WTIME()
-   do m=1,mme
+   mm_tmp_electron = mme
+   !$acc parallel loop private(rhox, rhoy)
+   do m=1,mm_tmp_electron
       r=x3e(m)-0.5*lx+lr0
 
       k = int(z3e(m)/delz)
@@ -1535,6 +1559,7 @@ subroutine grid1(ip,n)
          rhog=sqrt(2.*b*mue3(m)*emass)/(b) !yjhu
          !write(*,*) 'rhoge=', rhog
          gdum = randpool(modulo(m-1, npool))*pi2
+         !$acc loop seq
          do l=1,lr_e !yjhu added, March 8, 2019
             gphase = l*pi2/lr_e+gdum
             rhox(l) = cos(gphase)*rhog*grp
@@ -1542,14 +1567,18 @@ subroutine grid1(ip,n)
          enddo
       else
          lr_e=1
-         rhox=0.0
-         rhoy=0.0
+         !$acc loop seq
+         do l=1,lr_e
+            rhox(l)=0.0
+            rhoy(l)=0.0
+         enddo
       endif
 !yjhu     dv=(dx*dy*dz)
       dv=(dx*dy*dz)*lr_e !yjhu
       wght=w3e(m)/dv
       vpar = u3e(m) !linearly correct
       !         if(abs(vpar/vte).gt.vcut)wght = 0.
+      !$acc loop seq
       do l=1, lr_e !yjhu
          xt=x3e(m) + rhox(l)
          yt=y3e(m) + rhoy(l)
@@ -1579,22 +1608,38 @@ subroutine grid1(ip,n)
          x110=wx1*wy1*wz0
          x111=wx1*wy1*wz1
 
+         !$acc atomic update
          mydene(i,j,k)      =mydene(i,j,k)+wght*x000
+         !$acc atomic update
          mydene(i+1,j,k)    =mydene(i+1,j,k)+wght*x100
+         !$acc atomic update
          mydene(i,j+1,k)    =mydene(i,j+1,k)+wght*x010
+         !$acc atomic update
          mydene(i+1,j+1,k)  =mydene(i+1,j+1,k)+wght*x110
+         !$acc atomic update
          mydene(i,j,k+1)    =mydene(i,j,k+1)+wght*x001
+         !$acc atomic update
          mydene(i+1,j,k+1)  =mydene(i+1,j,k+1)+wght*x101
+         !$acc atomic update
          mydene(i,j+1,k+1)  =mydene(i,j+1,k+1)+wght*x011
+         !$acc atomic update
          mydene(i+1,j+1,k+1)=mydene(i+1,j+1,k+1)+wght*x111
 
+         !$acc atomic update
          myupar(i,j,k)      =myupar(i,j,k)+wght*vpar*x000
+         !$acc atomic update
          myupar(i+1,j,k)    =myupar(i+1,j,k)+wght*vpar*x100
+         !$acc atomic update
          myupar(i,j+1,k)    =myupar(i,j+1,k)+wght*vpar*x010
+         !$acc atomic update
          myupar(i+1,j+1,k)  =myupar(i+1,j+1,k)+wght*vpar*x110
+         !$acc atomic update
          myupar(i,j,k+1)    =myupar(i,j,k+1)+wght*vpar*x001
+         !$acc atomic update
          myupar(i+1,j,k+1)  =myupar(i+1,j,k+1)+wght*vpar*x101
+         !$acc atomic update
          myupar(i,j+1,k+1)  =myupar(i,j+1,k+1)+wght*vpar*x011
+         !$acc atomic update
          myupar(i+1,j+1,k+1)=myupar(i+1,j+1,k+1)+wght*vpar*x111
       enddo !yjhu N-point in gyo-phase
    enddo !loop over markers
@@ -3417,13 +3462,16 @@ subroutine pint
    integer :: myopz,myoen
    real :: x000,x001,x010,x011,x100,x101,x110,x111
    real :: rhog,gphase,gdum !yjhu
+   integer :: mm_tmp
    myopz = 0
    myoen = 0
    myavptch = 0.
    myaven = 0.
    pidum = 1./(pi*2)**1.5*(vwidthe)**3
    pint_start_tm = pint_start_tm + MPI_WTIME()
-   do m=1,mme
+   mm_tmp = mme
+   !$acc parallel loop private(rhox, rhoy)
+   do m=1,mm_tmp
       r=x2e(m)-0.5*lx+lr0
 
       k = int(z2e(m)/delz)
@@ -3480,6 +3528,7 @@ subroutine pint
       if(electron_flr.eqv..true.) then !yjhu
          rhog=sqrt(2.*b*mue2(m)*emass)/(b) !yjhu
          gdum = randpool(modulo(m-1, npool))*pi2
+         !$acc loop seq
          do l=1,lr_e !yjhu added, March 8, 2019
             gphase = l*pi2/lr_e+gdum
             rhox(l) = cos(gphase)*rhog*grp
@@ -3487,14 +3536,18 @@ subroutine pint
          enddo
       else
          lr_e=1
-         rhox=0.0
-         rhoy=0.0
+         !$acc loop seq
+         do l=1,lr_e
+            rhox(l) = 0.0
+            rhoy(l) = 0.0
+         enddo
       endif
       !     write(*,*) 'rhog=', rhog
       exp1=0.; eyp=0.0; ezp=0.0; delbxp=0.0; delbyp=0.0 ; dgdtp=0.0 !yjhu
       dpdzp=0.0;   dadzp=0.0;  aparp=0.0;  phip=0.0  !yjhu
 !!$     xt = x2e(m)
 !!$     yt = y2e(m)
+      !$acc loop seq
       do l=1,lr_e !yjhu
          xt = x2e(m) + rhox(l)
          yt = y2e(m) + rhoy(l)
@@ -3790,6 +3843,7 @@ subroutine cint(n)
    real :: rhox(lr_e),rhoy(lr_e) !yjhu
    real :: x000,x001,x010,x011,x100,x101,x110,x111
    real :: rhog,gphase,gdum !yjhu
+   integer :: mm_tmp
    sbuf(1:10) = 0.
    rbuf(1:10) = 0.
    myavewe = 0.
@@ -3811,7 +3865,9 @@ subroutine cint(n)
    pidum = 1./(pi*2)**1.5*(vwidthe)**3
 
    cint_start_tm = cint_start_tm + MPI_WTIME()
-   do m=1,mme
+   mm_tmp = mme
+   !$acc parallel loop private(rhox, rhoy)
+   do m=1,mm_tmp
       r=x3e(m)-0.5*lx+lr0
 
       k = int(z3e(m)/delz)
@@ -3868,6 +3924,7 @@ subroutine cint(n)
       if(electron_flr.eqv..true.) then !yjhu
          rhog=sqrt(2.*b*mue2(m)*emass)/(b) !yjhu
          gdum = randpool(modulo(m-1, npool))*pi2
+         !$acc loop seq
          do l=1,lr_e !yjhu added, March 8, 2019
             gphase = l*pi2/lr_e+gdum
             rhox(l) = cos(gphase)*rhog*grp
@@ -3875,13 +3932,17 @@ subroutine cint(n)
          enddo
       else
          lr_e=1
-         rhox=0.0
-         rhoy=0.0
+         !$acc loop seq
+         do l=1,lr_e
+            rhox(l) = 0.0
+            rhoy(l) = 0.0
+         enddo
       endif
       exp1=0.; eyp=0.0; ezp=0.0; delbxp=0.0; delbyp=0.0 ; dgdtp=0.0 !yjhu
       dpdzp=0.0;   dadzp=0.0;  aparp=0.0;  phip=0.0  !yjhu
 !!$     xt = x3e(m)
 !!$     yt = y3e(m)
+      !$acc loop seq
       do l=1, lr_e !yjhu
          xt = x3e(m) + rhox(l)
          yt = y3e(m) + rhoy(l)
@@ -4087,10 +4148,14 @@ subroutine cint(n)
       k = int(x3e(m)/(lx/nsubd))
       k = min(k,nsubd-1)
       k = k+1
+      !$acc atomic update
       mypfl_es(k)=mypfl_es(k) + w3old*(eyp)
+      !$acc atomic update
       mypfl_em(k)=mypfl_em(k) + w3old*(vpar*delbxp/b)
       myptrp=myptrp + w3old*eyp*(1-ipass(m))
+      !$acc atomic update
       myefl_es(k)=myefl_es(k) + vfac*w3old*(eyp)
+      !$acc atomic update
       myefl_em(k)=myefl_em(k) + vfac*w3old*(vpar*delbxp/b)
       myke=myke + vfac*w3e(m)
       mynos=mynos + w3e(m)

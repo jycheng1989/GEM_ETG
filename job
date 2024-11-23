@@ -4,7 +4,7 @@
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=4
 #SBATCH -c 8
-#SBATCH -t 0:30:00
+#SBATCH -t 0:05:00
 #SBATCH -J x
 #SBATCH -C gpu
 #SBATCH --gres=gpu:4
