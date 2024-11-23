@@ -655,6 +655,23 @@ subroutine init
       write(*,*) 't0i(nr/2)= ', t0i(nr/2)
       write(*,*) 'Gyrokrs = ', 2*pi*sqrt(mims(1))*sqrt(t0e(nr/2))/ly/bunit
    end if
+
+!$acc update device( bfld,qhat,radius,gr,gth,grdgt,grcgt)
+!$acc update device( gxdgy,dydr,dbdr,dbdth,jacob)
+!$acc update device( yfn,hght,thflx,psi) 
+!$acc update device( f,psip,sf,jacoba,jfn,zfnth,thfnz)
+!$acc update device( t0i,t0e,t0b,t0c,t0ip,t0ep,t0bp,t0cp)
+!$acc update device( xn0i,xn0e,xn0c,xn0b,xn0ip,xn0ep,xn0bp)
+!$acc update device( xn0cp,vpari,vparc,vparb)
+!$acc update device( vparip,vparcp,vparbp)
+!$acc update device( capti,capte,captb,captc,capni,capne)
+!$acc update device( capnb,capnc,zeff,nue0,phinc,phincp)
+!$acc update device( er,upari,dipdr)
+!$acc update device( psip2)
+!$acc update device( curvbz,srbr,srbz,thbr,thbz,prsrbr,prsrbz,pthsrbr,pthsrbz,bdcrvb)
+!$acc update device( t0s,xn0s,capts,capns,vpars,vparsp)
+!$acc update device( cn0s,n0smax,tgis)
+
    !      return
 end subroutine init
 
@@ -4301,14 +4318,17 @@ subroutine lorentz(ip,n)
    real :: edum,vdum,dum,dum1,ptch,vte,r,qr,th,cost,b
    real :: h_x,h_coll,x,eps,dtcol,uold,hee,nue,ter
    real :: wx0,wx1,wz0,wz1
-
+   integer :: mm_tmp
+ 
    ncol = 1
    if(ip.eq.1)dtcol = dt/ncol*2
    if(ip.eq.0)dtcol = dt/ncol
    vte = sqrt(amie*t0e(nr/2))
    if(rneu==0.0)return
    lorentz_start_tm = lorentz_start_tm + MPI_WTIME()
-   do k = 1,mme
+   mm_tmp = mme
+   !$acc parallel loop
+   do k = 1,mm_tmp
       r=x3e(k)-0.5*lx+lr0
 
       m = int(z3e(k)/delz)
@@ -4340,6 +4360,7 @@ subroutine lorentz(ip,n)
       !         dum = dtcol*rneu*dum1
       dum = dtcol*nue*dum1
       !         if(x<0.3)dum=0.0
+      !$acc loop seq
       do icol = 1,ncol
          ptch =ptch-dum*ptch+sqrt(dum*(1.-ptch*ptch)) &
             *sign(1.0,ran2(iseed)-0.5)
