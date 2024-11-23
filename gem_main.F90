@@ -4363,7 +4363,7 @@ subroutine lorentz(ip,n)
       !$acc loop seq
       do icol = 1,ncol
          ptch =ptch-dum*ptch+sqrt(dum*(1.-ptch*ptch)) &
-            *sign(1.0,ran2(iseed)-0.5)
+            *sign(1.0,randpool(modulo(k-1, npool))-0.5)
          ptch = min(ptch,0.999)
          ptch = max(ptch,-0.999)
       end do
@@ -6351,6 +6351,7 @@ subroutine rstpe
    real :: myavwcell(0:imx-1,0:jmx-1),avwcell(0:imx-1,0:jmx-1)
    real :: dwn(0:imx-1,0:jmx-1),dwe(0:imx-1,0:jmx-1)
    real :: dwp(0:imx-1,0:jmx-1)
+   integer :: mm_tmp
 
    dvfac = emac/negrd
    dlamb = 2.0/nlgrd
@@ -6365,8 +6366,9 @@ subroutine rstpe
    myng = 0
    myncell = 0.
    myavwcell = 0.
-
-   do m=1,mme
+   mm_tmp = mme
+   !$acc parallel loop
+   do m=1,mm_tmp
       r=x3e(m)-0.5*lx+lr0
 
       k = int(z3e(m)/delz)
@@ -6419,6 +6421,7 @@ subroutine rstpe
       wp(0) = 1-favl+(real(il+1)-(lamb+1.)/dlamb)*favl
       wp(1) = 1.-wp(0)
 
+      !$acc loop seq
       do j1 = 0,1
          do j2 = 0,1
             do j3 = 0,1
@@ -6439,6 +6442,7 @@ subroutine rstpe
       myng(i,j,ie,il) = myng(i,j,ie,il)+1
       mytotw(i,j,ie,il) = mytotw(i,j,ie,il)+w3e(m)
 
+      !$acc loop seq
       do j1 = 0,1
          do j2 = 0,1
             do j3 = 0,1
@@ -7392,13 +7396,15 @@ subroutine colli(ip,n)
    real :: edum,vdum,dum,dum1,ptch,vti,r,qr,th,cost,b
    real :: h_x,h_coll,x,eps,dtcol,uold,hee,nue,ter
    real :: wx0,wx1,wz0,wz1
-
+   integer :: mm_tmp
+ 
    ncol = 1
    if(ip.eq.1)dtcol = dt/ncol*2
    if(ip.eq.0)dtcol = dt/ncol
    if(rneui==0.0)return
    colli_start_tm = colli_start_tm + MPI_WTIME()
-   do k = 1,mm(1)
+   mm_tmp = mm(1)
+   do k = 1,mm_tmp
       r=x3(k,1)-0.5*lx+lr0
 
       m = int(z3(k,1)/delz)
@@ -7430,6 +7436,7 @@ subroutine colli(ip,n)
       !         dum = dtcol*rneu*dum1
       dum = dtcol*nue*dum1
       !         if(x<0.3)dum=0.0
+      !$acc loop seq
       do icol = 1,ncol
          ptch =ptch-dum*ptch+sqrt(dum*(1.-ptch*ptch)) &
             *sign(1.0,randpool(modulo(m-1, npool))-0.5)
