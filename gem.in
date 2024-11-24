@@ -14,7 +14,7 @@ kmx = 4              !number of grid points along z direction, the primary domai
 micell = 8            !number of marker particles of ions per cell 
 mecell = 8            !number of marker particles of electron per cell
  
-nsmx = 3              !maximum number if impurity ions
+nsmx = 1              !maximum number if impurity ions
 nsm = 1               !number of ion species
  
 lxa = 0.03            !radial box size divided by a

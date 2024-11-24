@@ -50,6 +50,8 @@ module gem_com
    real :: grid1_electron_start_tm, grid1_electron_end_tm, grid1_electron_tot_tm
    real :: init_pmove_start_tm, init_pmove_end_tm, init_pmove_tot_tm
    real :: pmove_start_tm, pmove_end_tm, pmove_tot_tm
+   real :: init_gkpsL_start_tm, init_gkpsL_end_tm, init_gkpsL_tot_tm
+   real :: init_ezampL_start_tm, init_ezampL_end_tm, init_ezampL_tot_tm
    complex,dimension(:),allocatable :: tmpx
    complex,dimension(:),allocatable :: tmpy
    complex,dimension(:),allocatable :: tmpz

@@ -86,11 +86,11 @@ program gem_main
    end do
 !  call ftcamp
    lasttm=MPI_WTIME()
-   tottm=lasttm-starttm
+   tottm=lasttm-starttm - (init_ezampL_end_tm - init_ezampL_start_tm) - (init_gkpsL_end_tm - init_gkpsL_start_tm)
 
    accumulate_tot_tm = accumulate_end_tm - accumulate_start_tm
-   ampere_tot_tm = ampere_end_tm - ampere_start_tm
-   poisson_tot_tm = poisson_end_tm - poisson_start_tm
+   ampere_tot_tm = ampere_end_tm - ampere_start_tm - (init_ezampL_end_tm - init_ezampL_start_tm)
+   poisson_tot_tm = poisson_end_tm - poisson_start_tm - (init_gkpsL_end_tm - init_gkpsL_start_tm)
    field_tot_tm = field_end_tm - field_start_tm
    diagnose_tot_tm = diagnose_end_tm - diagnose_start_tm
    reporter_tot_tm = reporter_end_tm - reporter_start_tm
@@ -105,6 +105,8 @@ program gem_main
    grid1_electron_tot_tm = grid1_electron_end_tm - grid1_electron_start_tm
    init_pmove_tot_tm = init_pmove_end_tm - init_pmove_start_tm
    pmove_tot_tm = pmove_end_tm - pmove_start_tm
+   init_gkpsL_tot_tm = init_gkpsL_end_tm - init_gkpsL_start_tm
+   init_ezampL_tot_tm = init_ezampL_end_tm - init_ezampL_start_tm
 
    call mpi_reduce(tottm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
    tot_tm = dum / real(numprocs)
@@ -160,6 +162,12 @@ program gem_main
    call mpi_reduce(pmove_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
    pmove_tot_tm = dum / real(numprocs)
 
+   call mpi_reduce(init_gkpsL_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   init_gkpsL_tot_tm = dum / real(numprocs)
+
+   call mpi_reduce(init_ezampL_tot_tm, dum, 1, MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+   init_ezampL_tot_tm = dum / real(numprocs)
+
  
    if(myid==0)then
      open(123, file="timing.txt", status="replace", action="write")
@@ -182,6 +190,9 @@ program gem_main
      write(123,*)'grid1 electron time =', grid1_electron_tot_tm
      write(123,*)'init pmove time =', init_pmove_tot_tm
      write(123,*)'pmove time =', pmove_tot_tm
+     write(123,*)"============================================="
+     write(123,*)'init gkpsL time =', init_gkpsL_tot_tm
+     write(123,*)'init ezampL time =', init_ezampL_tot_tm
      close(123)
    endif 
    !  write(*,*)'ps time=',pstm,'tot time=',tottm
@@ -6785,12 +6796,12 @@ subroutine gkpsL(nstep,ip)
 
    save formphi,formfe,ifirst,akx,aky,akx2
 
+   init_gkpsL_start_tm = init_gkpsL_start_tm + MPI_WTIME()
    !     form factors....
    if (ifirst.ne.-99) then
       ALLOCATE( akx(0:imx-1),aky(0:jmx-1))
       ALLOCATE( formphi(0:imx-1,0:jmx-1,0:kmx),akx2(0:imx-1,0:kmx))
       ALLOCATE( formfe(0:imx-1,0:jmx-1,0:kmx))
-
       do l=0,im-1
          do m=0,jm-1
             do n = 0,km
@@ -6900,6 +6911,7 @@ subroutine gkpsL(nstep,ip)
       ifirst=-99
 
    endif
+   init_gkpsL_end_tm = init_gkpsL_end_tm + MPI_WTIME()
 
    !   now do field solve...
 
@@ -7086,6 +7098,7 @@ subroutine ezampL(nstep,ip)
 
    save formapa,ifirs,akx,aky
 
+   init_ezampL_start_tm = init_ezampL_start_tm + MPI_WTIME()
    !     form factors....
    if (ifirs.ne.-99) then
       !
@@ -7172,6 +7185,7 @@ subroutine ezampL(nstep,ip)
       ifirs=-99
 
    endif
+   init_ezampL_end_tm = init_ezampL_end_tm + MPI_WTIME()
 
    !   now do field solve...
 
