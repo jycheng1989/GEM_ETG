@@ -3,7 +3,7 @@
 #SBATCH -q debug
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=4
-#SBATCH -c 8
+#SBATCH -c 16
 #SBATCH -t 0:05:00
 #SBATCH -J x
 #SBATCH -C gpu
@@ -15,11 +15,10 @@ cd $SLURM_SUBMIT_DIR
 mkdir -p matrix
 mkdir -p out
 mkdir -p dump
-
 export OMP_PROC_BIND=spread
 export OMP_PLACES=threads
-export OMP_NUM_THREADS=8
-#module load forge 
+export OMP_NUM_THREADS=16
+module load forge 
 #cd $SLURM_SUBMIT_DIR
 rm plot
 #srun --cpu-bind=cores ./gem_main >& run.out
@@ -27,4 +26,4 @@ rm plot
 export SLURM_CPU_BIND="cores"
 #srun nsys profile -s process-tree -o output ./gem_main
 srun ./gem_main &>run.out
-#ddt --offline --cuda --output=debug.html srun ./gem_main &>run.out
+#ddt --offline --output=debug.html srun ./gem_main &>run.out

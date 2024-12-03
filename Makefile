@@ -3,14 +3,14 @@ OBJS = $(SRCS:.F90=.o)
 DFFTPACK = /global/homes/j/jycheng/Software/dfftpack/libdfftpack.a
 F90 = ftn
 
-OPT = -O3 -r8 -Kieee -llapack -lblas -cpp -acc -Minfo=acc -DGPU -DOPENACC 
-LDFLAGS = $(DFFTPACK)
+OPT = -O3 -r8 -Kieee -cpp -acc -Minfo=acc -DGPU -DOPENACC -I$(FFTW_INC) -llapack -lblas #-mp
+LDFLAGS = $(DFFTPACK) -L$(FFTW_DIR) -lfftw3 #-lfftw3f -lfftw3_omp
 
 .PHONY: all clean run
 all: gem_main
 
 gem_main: $(OBJS)
-	$(F90) -o $@ $(OPT) $^ $(PLIB) $(LDFLAGS)
+	$(F90) -o $@ $(OPT) $^ $(LDFLAGS)
 
 %.o: %.F90
 	$(F90) -c $(OPT) $< -o $@
