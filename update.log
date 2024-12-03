@@ -28,3 +28,15 @@ omp 4  , 8.95
 omp 8  , 7.93
 omp 16 , 6.09
 omp 32 , 6.05
+
+################ second fftw ################
+two fftw calls:
+
+gkpsL part 2:
+omp 16 , 4.04E-3
+
+poisson:
+omp 16 , 5.02
+
+total time:
+omp 16 , 8.46   

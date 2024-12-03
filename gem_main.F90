@@ -6798,19 +6798,18 @@ subroutine gkpsL(nstep,ip)
    real :: stop_time_0, stop_time_1, stop_time_2, stop_time_3, stop_time_4, stop_time_5, stop_time_6, stop_time_7, stop_time_8
    save formphi,formfe,ifirst,akx,aky,akx2
 
-   integer*8,dimension(:),allocatable :: plan_y
+   integer*8,dimension(:),allocatable :: plan_y_forward, plan_x_forward
    integer :: iRet
    integer :: nthreads, max_threads, thread_id
-   complex,dimension(:,:),allocatable :: in,out
-   complex :: in_(0:jmx-1), out_(0:jmx-1)
-   integer*8 :: plan_y_
+   complex,dimension(:,:),allocatable :: in_y, out_y, in_x, out_x
    max_threads = omp_get_max_threads()
-   allocate(plan_y(0:max_threads-1)) 
-   allocate(in(0:jmx-1,0:max_threads-1),out(0:jmx-1,0:max_threads-1))
+   allocate(plan_x_forward(0:max_threads-1), plan_y_forward(0:max_threads-1)) 
+   allocate(in_x(0:imx-1,0:max_threads-1), out_x(0:imx-1,0:max_threads-1), in_y(0:jmx-1,0:max_threads-1),out_y(0:jmx-1,0:max_threads-1))
    call dfftw_init_threads(iRet)
    call dfftw_plan_with_nthreads(1)
    do thread_id = 0, max_threads-1
-     call dfftw_plan_dft_1d(plan_y(thread_id),jmx,in(:,thread_id),out(:,thread_id),FFTW_FORWARD,FFTW_MEASURE)
+     call dfftw_plan_dft_1d(plan_x_forward(thread_id),imx,in_x(:,thread_id),out_x(:,thread_id),FFTW_FORWARD,FFTW_MEASURE)
+     call dfftw_plan_dft_1d(plan_y_forward(thread_id),jmx,in_y(:,thread_id),out_y(:,thread_id),FFTW_FORWARD,FFTW_MEASURE)
    enddo
    init_gkpsL_start_tm = init_gkpsL_start_tm + MPI_WTIME()
    !     form factors....
@@ -6961,32 +6960,33 @@ subroutine gkpsL(nstep,ip)
          thread_id=omp_get_thread_num()
          !if(myid==0)write(*,*)'thread_id',thread_id
          do j = 0,jmx-1
-            in(j,thread_id) = temp3d(i,j,k)
+            in_y(j,thread_id) = temp3d(i,j,k)
          end do
-         !call dfftw_plan_dft_1d(plan_y(thread_id),jmx,in(:,thread_id),out(:,thread_id),FFTW_FORWARD,FFTW_ESTIMATE)
-         call dfftw_execute_dft(plan_y(thread_id),in(:,thread_id),out(:,thread_id))
-         !call dfftw_destroy_plan(plan_y(thread_id))
+         call dfftw_execute_dft(plan_y_forward(thread_id),in_y(:,thread_id),out_y(:,thread_id))
          !call ccfft('y',-1,jmx,1.0,tmpy,coefy,worky,0)
-         !call dfftw_execute_dft(plan_y(thread_id),in(:,thread_id),out(:,thread_id))
          do j = 0,jmx-1
-            temp3d(i,j,k) = out(j,thread_id)   !rho(ky,x)
+            temp3d(i,j,k) = out_y(j,thread_id)   !rho(ky,x)
          end do
       end do
 
+      !$omp parallel do private(thread_id)
       do j = 0,jmx-1
+         thread_id=omp_get_thread_num()
          do i = 0,imx-1
-            tmpx(i) = temp3d(i,j,k)
+            in_x(i,thread_id) = temp3d(i,j,k)
          end do
-         call ccfft('x',-1,imx,1.0,tmpx,coefx,workx,0)
+         call dfftw_execute_dft(plan_x_forward(thread_id),in_x(:,thread_id),out_x(:,thread_id)) 
+         !call ccfft('x',-1,imx,1.0,tmpx,coefx,workx,0)
          do i = 0,imx-1
-            temp3d(i,j,k) = tmpx(i)   ! rho(kx,ky)
+            temp3d(i,j,k) = out_x(i,thread_id)   ! rho(kx,ky)
          end do
       end do
    enddo
 
    stop_time_2 = MPI_WTIME()
    do thread_id = 0, max_threads-1
-     call dfftw_destroy_plan(plan_y(thread_id))
+     call dfftw_destroy_plan(plan_x_forward(thread_id))
+     call dfftw_destroy_plan(plan_y_forward(thread_id))
    enddo
    call dfftw_cleanup_threads()
    !   find aphik(k_x) from rho(kx,ky=0,z)
