@@ -3,8 +3,8 @@ OBJS = $(SRCS:.F90=.o)
 DFFTPACK = /global/homes/j/jycheng/Software/dfftpack/libdfftpack.a
 F90 = ftn
 
-OPT = -O3 -r8 -Kieee -cpp -acc -Minfo=acc -DGPU -DOPENACC -I$(FFTW_INC) -llapack -lblas #-mp
-LDFLAGS = $(DFFTPACK) -L$(FFTW_DIR) -lfftw3 #-lfftw3f -lfftw3_omp
+OPT = -O3 -r8 -Kieee -cpp -acc -Minfo=acc -DGPU -DOPENACC -I$(FFTW_INC) -llapack -lblas -mp
+LDFLAGS = $(DFFTPACK) -L$(FFTW_DIR) -lfftw3 -lfftw3f -lfftw3_omp
 
 .PHONY: all clean run
 all: gem_main

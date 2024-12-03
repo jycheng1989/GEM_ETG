@@ -1,0 +1,30 @@
+################ first fftw ################
+gkpsL part 2:
+pure cpu, 1.50e-2
+gkpsL part 2 (include the fftw calls):
+omp 1  , 2.92e-2
+omp 2  , 1.13e-2
+omp 4  , 9.36e-3
+omp 8  , 6.68e-3
+omp 16 , 6.60e-3
+omp 32 , 5.73e-3
+
+poisson:
+pure cpu, 1.61
+possion (include a fftw call):
+omp 1  , 11.89
+omp 2  , 3.62
+omp 4  , 3.55
+omp 8  , 3.11
+omp 16 , 2.66
+omp 32 , 2.71
+
+total time:
+pure cpu, 5.272
+total time (include a fftw call):
+omp 1  , 92.28
+omp 2  , 9.05
+omp 4  , 8.95
+omp 8  , 7.93
+omp 16 , 6.09
+omp 32 , 6.05
