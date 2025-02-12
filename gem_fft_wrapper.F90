@@ -1,14 +1,53 @@
 module gem_fft_wrapper
-
+   use omp_lib
    implicit none
+   include 'fftw3.f'
 
    real :: coefxp(20000),coefyp(20000),coefzp(20000)
    real :: coefxn(20000),coefyn(20000),coefzn(20000)
    real :: workxx(20000),workyy(20000),workzz(20000)
    real :: wsave(50000)
 
+   integer*8,dimension(:),allocatable :: plan_x_forward, plan_y_forward, plan_x_backward, plan_y_backward
+   integer :: iRet
+   integer :: max_threads
+   complex,dimension(:,:),allocatable :: in_x_forward, out_x_forward, in_y_forward, out_y_forward, in_x_backward, out_x_backward, in_y_backward, out_y_backward
+
 contains
 
+   subroutine init_fftw(imx, jmx, kmx)
+     integer :: imx, jmx, kmx, thread_id
+
+     max_threads = omp_get_max_threads()
+     
+     allocate(plan_x_forward(0:max_threads-1), plan_y_forward(0:max_threads-1), plan_x_backward(0:max_threads-1), plan_y_backward(0:max_threads-1))
+     allocate(in_x_forward(0:imx-1,0:max_threads-1), out_x_forward(0:imx-1,0:max_threads-1), in_y_forward(0:jmx-1,0:max_threads-1),out_y_forward(0:jmx-1,0:max_threads-1))
+     allocate(in_x_backward(0:imx-1,0:max_threads-1), out_x_backward(0:imx-1,0:max_threads-1), in_y_backward(0:jmx-1,0:max_threads-1),out_y_backward(0:jmx-1,0:max_threads-1))
+     
+     call dfftw_init_threads(iRet)
+     call dfftw_plan_with_nthreads(1)
+     max_threads = omp_get_max_threads()
+     do thread_id = 0, max_threads-1
+       call dfftw_plan_dft_1d(plan_x_forward(thread_id),imx,in_x_forward(:,thread_id),out_x_forward(:,thread_id),FFTW_FORWARD,FFTW_MEASURE)
+       call dfftw_plan_dft_1d(plan_y_forward(thread_id),jmx,in_y_forward(:,thread_id),out_y_forward(:,thread_id),FFTW_FORWARD,FFTW_MEASURE)
+       call dfftw_plan_dft_1d(plan_x_backward(thread_id),imx,in_x_backward(:,thread_id),out_x_backward(:,thread_id),FFTW_BACKWARD,FFTW_MEASURE)
+       call dfftw_plan_dft_1d(plan_y_backward(thread_id),jmx,in_y_backward(:,thread_id),out_y_backward(:,thread_id),FFTW_BACKWARD,FFTW_MEASURE)
+     enddo          
+   end subroutine init_fftw
+
+
+   subroutine finalize_fftw()
+     integer :: thread_id
+     do thread_id = 0, max_threads-1
+       call dfftw_destroy_plan(plan_x_forward(thread_id))
+       call dfftw_destroy_plan(plan_y_forward(thread_id))
+       call dfftw_destroy_plan(plan_x_backward(thread_id))
+       call dfftw_destroy_plan(plan_y_backward(thread_id))
+     enddo
+     call dfftw_cleanup_threads()
+     deallocate(plan_x_forward, plan_y_forward, plan_x_backward, plan_y_backward) 
+     deallocate(in_x_forward, out_x_forward, in_y_forward, out_y_forward, in_x_backward, out_x_backward, in_y_backward, out_y_backward)
+   end subroutine finalize_fftw
    subroutine ccfft(c,isign,n,scale,x,table,work,isys)
       character :: c
       real :: scale

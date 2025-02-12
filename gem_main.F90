@@ -201,6 +201,7 @@ program gem_main
       call MPI_BARRIER(MPI_COMM_WORLD,ierr)
    end do
 
+   call finalize_fftw()
 100 call MPI_FINALIZE(ierr)
 
 end program gem_main
@@ -4448,7 +4449,7 @@ subroutine initialize
    call ccfft('y',0,jmx,0.0,tmpy,coefy,worky,0)
    call ccfft('z',0,kmx,0.0,tmpz,coefz,workz,0)
    call dsinf(1,x,1,0,1,0,imx*2,1,1.0,aux1,50000,aux2,20000)
-
+   call init_fftw(imx,jmx,kmx)
    ncurr = 1
 !  call blendf
 end subroutine initialize
@@ -6769,9 +6770,7 @@ subroutine gkpsL(nstep,ip)
    use gem_com
    use gem_equil
    use gem_fft_wrapper
-   use omp_lib
    implicit none
-   include 'fftw3.f'
    INTEGER :: ns
    real :: lbfr(0:imx,0:jmx)
    real :: lbfs(0:imx,0:jmx)
@@ -6795,22 +6794,10 @@ subroutine gkpsL(nstep,ip)
    real :: myrmsphi
    real :: myaph(0:imx),aph(0:imx)
    real :: myden(0:imx,0:jmx,0:1),rho1(0:imx,0:jmx,0:1)
-   real :: stop_time_0, stop_time_1, stop_time_2, stop_time_3, stop_time_4, stop_time_5, stop_time_6, stop_time_7, stop_time_8
    save formphi,formfe,ifirst,akx,aky,akx2
 
-   integer*8,dimension(:),allocatable :: plan_y_forward, plan_x_forward
-   integer :: iRet
-   integer :: nthreads, max_threads, thread_id
-   complex,dimension(:,:),allocatable :: in_y, out_y, in_x, out_x
-   max_threads = omp_get_max_threads()
-   allocate(plan_x_forward(0:max_threads-1), plan_y_forward(0:max_threads-1)) 
-   allocate(in_x(0:imx-1,0:max_threads-1), out_x(0:imx-1,0:max_threads-1), in_y(0:jmx-1,0:max_threads-1),out_y(0:jmx-1,0:max_threads-1))
-   call dfftw_init_threads(iRet)
-   call dfftw_plan_with_nthreads(1)
-   do thread_id = 0, max_threads-1
-     call dfftw_plan_dft_1d(plan_x_forward(thread_id),imx,in_x(:,thread_id),out_x(:,thread_id),FFTW_FORWARD,FFTW_MEASURE)
-     call dfftw_plan_dft_1d(plan_y_forward(thread_id),jmx,in_y(:,thread_id),out_y(:,thread_id),FFTW_FORWARD,FFTW_MEASURE)
-   enddo
+   integer :: thread_id
+   complex :: in_x(0:imx-1), out_x(0:imx-1), in_y(0:jmx-1), out_y(0:jmx-1)
    init_gkpsL_start_tm = init_gkpsL_start_tm + MPI_WTIME()
    !     form factors....
    if (ifirst.ne.-99) then
@@ -6929,8 +6916,6 @@ subroutine gkpsL(nstep,ip)
    init_gkpsL_end_tm = init_gkpsL_end_tm + MPI_WTIME()
 
    !   now do field solve...
-
-   stop_time_0 = MPI_WTIME()
    !      phi = 0.
    !      return
    temp3d = 0.
@@ -6944,53 +6929,57 @@ subroutine gkpsL(nstep,ip)
       (imx+1)*(jmx+1)*2,MPI_REAL8,       &
       MPI_SUM,GRID_COMM,ierr)
 
-   stop_time_1 = MPI_WTIME()
    !  find rho(kx,ky)
    do k=0,mykm
       n = GCLR*kcnt+k
-      !$omp parallel do
+      !$omp parallel private(thread_id, in_y, out_y, in_x, out_x) firstprivate(plan_y_forward, plan_x_forward)
+      !$omp do collapse(2)
       do j=0,jm-1
          do i=0,im-1
             temp3d(i,j,k)=rho1(i,j,k)
          enddo
       enddo
    
-      !$omp parallel do private(thread_id)
+      !!$omp parallel do private(thread_id, in_y, out_y) firstprivate(plan_y_forward)
+      !$omp do
       do i = 0,imx-1
          thread_id=omp_get_thread_num()
          !if(myid==0)write(*,*)'thread_id',thread_id
          do j = 0,jmx-1
-            in_y(j,thread_id) = temp3d(i,j,k)
+            !in_y_forward(j,thread_id) = temp3d(i,j,k)
+            in_y(j) = temp3d(i,j,k)
          end do
-         call dfftw_execute_dft(plan_y_forward(thread_id),in_y(:,thread_id),out_y(:,thread_id))
+         !call dfftw_execute_dft(plan_y_forward(thread_id),in_y_forward(:,thread_id),out_y_forward(:,thread_id))
+         call dfftw_execute_dft(plan_y_forward(thread_id),in_y,out_y)
          !call ccfft('y',-1,jmx,1.0,tmpy,coefy,worky,0)
          do j = 0,jmx-1
-            temp3d(i,j,k) = out_y(j,thread_id)   !rho(ky,x)
+            !temp3d(i,j,k) = out_y_forward(j,thread_id)   !rho(ky,x)
+            temp3d(i,j,k) = out_y(j)
          end do
       end do
 
-      !$omp parallel do private(thread_id)
+      !!$omp parallel do private(thread_id, in_x, out_x) firstprivate(plan_x_forward)
+      !$omp do
       do j = 0,jmx-1
          thread_id=omp_get_thread_num()
          do i = 0,imx-1
-            in_x(i,thread_id) = temp3d(i,j,k)
+            !in_x_forward(i,thread_id) = temp3d(i,j,k)
+            in_x(i) = temp3d(i,j,k)
          end do
-         call dfftw_execute_dft(plan_x_forward(thread_id),in_x(:,thread_id),out_x(:,thread_id)) 
+         !call dfftw_execute_dft(plan_x_forward(thread_id),in_x_forward(:,thread_id),out_x_forward(:,thread_id)) 
+         call dfftw_execute_dft(plan_x_forward(thread_id),in_x,out_x)
          !call ccfft('x',-1,imx,1.0,tmpx,coefx,workx,0)
          do i = 0,imx-1
-            temp3d(i,j,k) = out_x(i,thread_id)   ! rho(kx,ky)
+            !temp3d(i,j,k) = out_x_forward(i,thread_id)   ! rho(kx,ky)
+            temp3d(i,j,k) = out_x(i)
          end do
       end do
+      !$omp end parallel
    enddo
 
-   stop_time_2 = MPI_WTIME()
-   do thread_id = 0, max_threads-1
-     call dfftw_destroy_plan(plan_x_forward(thread_id))
-     call dfftw_destroy_plan(plan_y_forward(thread_id))
-   enddo
-   call dfftw_cleanup_threads()
    !   find aphik(k_x) from rho(kx,ky=0,z)
    if(iadi.eq.1)then
+      !$omp parallel do collapse(2)
       do k = 0,mykm-1
          do i = 0,imx-1
             myk=GCLR*kcnt+k
@@ -7000,20 +6989,22 @@ subroutine gkpsL(nstep,ip)
       call MPI_ALLREDUCE(myaphik(0:imx-1),aphik(0:imx-1),  &
          imx,MPI_DOUBLE_COMPLEX,MPI_SUM,TUBE_COMM,ierr)
    end if
-   stop_time_3 = MPI_WTIME()
    !  from rho(kx,ky) to phi(kx,ky)
    do k=0,mykm
       myk=GCLR*kcnt+k
+      !$omp parallel 
+      !$omp do collapse(2)
       do j=1,jm-1
          do i=0,im-1
             temp3d(i,j,k)=temp3d(i,j,k)*formphi(i,j,myk)
          enddo
       enddo
+      !$omp do
       do i = 0,im-1
          temp3d(i,0,k) = (temp3d(i,0,k)+aphik(i))*formphi(i,0,myk)
       end do
+      !$omp end parallel
    enddo
-   stop_time_4 = MPI_WTIME()
    !      if(myid.eq.0)write(*,*)ip,abs(temp3d(1,2,0)),abs(temp3d(5,6,0))
    !      call filtor(temp3d(0:imx-1,0:jmx-1,0:1))
    if(idg==1)write(*,*)'pass filtor', myid
@@ -7022,6 +7013,7 @@ subroutine gkpsL(nstep,ip)
    myfe=0.
    do k=0,mykm-1
       myk=GCLR*kcnt+k
+      !$omp parallel do collapse(2)
       do j=0,jm-1
          do i=0,im-1
             myfe=myfe+formfe(i,j,myk)*abs(temp3d(i,j,k))**2 !cabs
@@ -7031,37 +7023,47 @@ subroutine gkpsL(nstep,ip)
    call MPI_ALLREDUCE(myfe,fe(nstep),1,MPI_REAL8, &
       MPI_SUM,TUBE_COMM,ierr)
 
-   stop_time_5 = MPI_WTIME()
    !  from phi(kx,ky) to phi(x,y)
    do k=0,mykm
+      !$omp parallel do private(thread_id, in_y, out_y) firstprivate(plan_y_backward)
       do i = 0,imx-1
+         thread_id = omp_get_thread_num()
          do j = 0,jmx-1
-            tmpy(j) = temp3d(i,j,k)
+            !in_y_backward(j, thread_id) = temp3d(i,j,k)
+            in_y(j) = temp3d(i,j,k)
          end do
-         call ccfft('y',1,jmx,1.0,tmpy,coefy,worky,0)
+         !call ccfft('y',1,jmx,1.0,tmpy,coefy,worky,0)
+         !call dfftw_execute_dft(plan_y_backward(thread_id),in_y_backward(:,thread_id),out_y_backward(:,thread_id))
+         call dfftw_execute_dft(plan_y_backward(thread_id),in_y,out_y)
          do j = 0,jmx-1
-            temp3d(i,j,k) = tmpy(j)  ! phi(x,y)
+            !temp3d(i,j,k) = out_y_backward(j, thread_id)  ! phi(x,y)
+            temp3d(i,j,k) = out_y(j)
          end do
       end do
    end do
-   stop_time_6 = MPI_WTIME()
    !      call filtbl(temp3d(0:imx-1,0:jmx-1,0:1))  !need be very careful. What's een is not what's expected.
 
    do k=0,mykm
       n = GCLR*kcnt+k
+      !$omp parallel do private(thread_id, in_x, out_x) firstprivate(plan_x_backward)
       do j = 0,jmx-1
+         thread_id = omp_get_thread_num()
          do i = 0,imx-1
-            tmpx(i) = temp3d(i,j,k)
+            !in_x_backward(i,thread_id) = temp3d(i,j,k)
+            in_x(i) = temp3d(i,j,k)
          end do
-         call ccfft('x',1,imx,1.0,tmpx,coefx,workx,0)
-
+         !call ccfft('x',1,imx,1.0,tmpx,coefx,workx,0)
+         !call dfftw_execute_dft(plan_x_backward(thread_id),in_x_backward(:,thread_id),out_x_backward(:,thread_id))      
+         call dfftw_execute_dft(plan_x_backward(thread_id),in_x,out_x) 
          do i = 0,imx-1
-            temp3d(i,j,k) = tmpx(i)  ! phi(ky,x)
+            !temp3d(i,j,k) = out_x_backward(i, thread_id)  ! phi(ky,x)
+            temp3d(i,j,k) = out_x(i)
          end do
       end do
    end do
 
 100 continue
+   !$omp parallel do collapse(2)
    do i = 0,im-1
       do j = 0,jm-1
          do k = 0,mykm
@@ -7069,14 +7071,10 @@ subroutine gkpsL(nstep,ip)
          end do
       end do
    end do
-   stop_time_7 = MPI_WTIME()
    !    x-y boundary points
    call enfxy(phi(:,:,:))
    call enfz(phi(:,:,:))
    !      call filter(phi(:,:,:))
-   stop_time_8 = MPI_WTIME()
-   if(myid==0)write(*,*) "timing for gkpsL:", ' 1, ', stop_time_1 - stop_time_0, '2, ', stop_time_2 - stop_time_1, '3, ', stop_time_3 - stop_time_2, &
-   '4, ', stop_time_4 - stop_time_3, '5, ', stop_time_5 - stop_time_4, '6, ', stop_time_6 - stop_time_5, '7, ', stop_time_7 - stop_time_6, '8, ', stop_time_8 - stop_time_7
    if(izonal.eq.1)return
    do i=0,im
       myaph(i)=0.
@@ -7129,9 +7127,10 @@ subroutine ezampL(nstep,ip)
    complex :: temp3d(0:imx-1,0:jmx-1,0:1)
    real :: myrmsapa
    real :: myden(0:imx,0:jmx,0:1),jtmp(0:imx,0:jmx,0:1)
-   real :: stop_time_0, stop_time_1, stop_time_2, stop_time_3, stop_time_4, stop_time_5, stop_time_6, stop_time_7
   
    save formapa,ifirs,akx,aky
+
+   integer :: thread_id
 
    init_ezampL_start_tm = init_ezampL_start_tm + MPI_WTIME()
    !     form factors....
@@ -7223,48 +7222,52 @@ subroutine ezampL(nstep,ip)
    init_ezampL_end_tm = init_ezampL_end_tm + MPI_WTIME()
 
    !   now do field solve...
-   stop_time_0 = MPI_WTIME()
    temp3d = 0.
    myden = jion*ision-upar !-amie*upa00 !yjhu checked
    call MPI_ALLREDUCE(myden(0:im,0:jm,0:1),  &
       jtmp(0:im,0:jm,0:1),             &
       (imx+1)*(jmx+1)*2,MPI_REAL8,       &
       MPI_SUM,GRID_COMM,ierr)
-   stop_time_1 = MPI_WTIME()
    !  find jtot(kx,ky)
    do k=0,mykm
       n = GCLR*kcnt+k
+      !$omp parallel do collapse(2)
       do j=0,jm-1
          do i=0,im-1
             temp3d(i,j,k)=jtmp(i,j,k) !+amie*apar(i,j,k)*gn0e(i)*cn0e !yjhu checked
          enddo
       enddo
-
+      !$omp parallel do private(thread_id)
       do i = 0,imx-1
+         thread_id = omp_get_thread_num()
          do j = 0,jmx-1
-            tmpy(j) = temp3d(i,j,k)
+            in_y_forward(j, thread_id) = temp3d(i,j,k)
          end do
-         call ccfft('y',-1,jmx,1.0,tmpy,coefy,worky,0)
+         !call ccfft('y',-1,jmx,1.0,tmpy,coefy,worky,0)
+         call dfftw_execute_dft(plan_y_forward(thread_id), in_y_forward(:,thread_id), out_y_forward(:,thread_id))
          do j = 0,jmx-1
-            temp3d(i,j,k) = tmpy(j)   !jtot(ky,x)
+            temp3d(i,j,k) = out_y_forward(j, thread_id)   !jtot(ky,x)
          end do
       end do
 
+      !$omp parallel do private(thread_id)
       do j = 0,jmx-1
+         thread_id = omp_get_thread_num()
          do i = 0,imx-1
-            tmpx(i) = temp3d(i,j,k)
+            in_x_forward(i, thread_id) = temp3d(i,j,k)
          end do
-         call ccfft('x',-1,imx,1.0,tmpx,coefx,workx,0)
+         !call ccfft('x',-1,imx,1.0,tmpx,coefx,workx,0)
+         call dfftw_execute_dft(plan_x_forward(thread_id), in_x_forward(:,thread_id), out_x_forward(:,thread_id))
          do i = 0,imx-1
-            temp3d(i,j,k) = tmpx(i)   ! jtot(kx,ky)
+            temp3d(i,j,k) = out_x_forward(i, thread_id)   ! jtot(kx,ky)
          end do
       end do
    enddo
    
-   stop_time_2 = MPI_WTIME()
    !  from jtot(kx,ky) to apar(kx,ky)
    do k=0,mykm
       myk=GCLR*kcnt+k
+      !$omp parallel do collapse(2)
       do j=0,jm-1
          do i=0,im-1
             temp3d(i,j,k)=temp3d(i,j,k)*formapa(i,j,myk)
@@ -7273,31 +7276,36 @@ subroutine ezampL(nstep,ip)
    enddo
    !      if(myid.eq.0)write(*,*)abs(temp3d(1,2,0)),abs(temp3d(5,6,0))
    !      call filtor(temp3d(0:imx-1,0:jmx-1,0:1))
-   stop_time_3 = MPI_WTIME()
    !  from apar(kx,ky) to apar(x,y)
    do k=0,mykm
       n = GCLR*kcnt+k
+      !$omp parallel do private(thread_id)
       do j = 0,jmx-1
+         thread_id = omp_get_thread_num()
          do i = 0,imx-1
-            tmpx(i) = temp3d(i,j,k)
+            in_x_backward(i, thread_id) = temp3d(i,j,k)
          end do
-         call ccfft('x',1,imx,1.0,tmpx,coefx,workx,0)
+         call dfftw_execute_dft(plan_x_backward(thread_id),in_x_backward(:,thread_id),out_x_backward(:,thread_id)) 
+         !call ccfft('x',1,imx,1.0,tmpx,coefx,workx,0)
          do i = 0,imx-1
-            temp3d(i,j,k) = tmpx(i)  ! j(ky,x)
+            temp3d(i,j,k) = out_x_backward(i, thread_id)  ! j(ky,x)
          end do
       end do
 
+      !$omp parallel do private(thread_id)
       do i = 0,imx-1
+         thread_id = omp_get_thread_num()
          do j = 0,jmx-1
-            tmpy(j) = temp3d(i,j,k)
+            in_y_backward(j, thread_id) = temp3d(i,j,k)
          end do
-         call ccfft('y',1,jmx,1.0,tmpy,coefy,worky,0)
+         !call ccfft('y',1,jmx,1.0,tmpy,coefy,worky,0)
+         call dfftw_execute_dft(plan_y_backward(thread_id),in_y_backward(:,thread_id),out_y_backward(:,thread_id))
          do j = 0,jmx-1
-            temp3d(i,j,k) = tmpy(j)  ! apar(x,y)
+            temp3d(i,j,k) = out_y_backward(j, thread_id)  ! apar(x,y)
          end do
       end do
    end do
-   stop_time_4 = MPI_WTIME()
+   !$omp parallel do collapse(2)
    do i = 0,im-1
       do j = 0,jm-1
          do k = 0,mykm
@@ -7305,15 +7313,10 @@ subroutine ezampL(nstep,ip)
          end do
       end do
    end do
-   stop_time_5 = MPI_WTIME()
    !    x-y boundary points
    call enfxy(apar(:,:,:))
-   stop_time_6 = MPI_WTIME()
    call enfz(apar(:,:,:))
    !      call filter(apar(:,:,:))
-   stop_time_7 = MPI_WTIME()
-   if(myid==0)write(*,*)'timing for ezampL:', ' 1, ', stop_time_1 - stop_time_0, '2, ', stop_time_2 - stop_time_1, '3, ', stop_time_3 - stop_time_2, &
-   '4, ', stop_time_4 - stop_time_3, '5, ', stop_time_5 - stop_time_4, '6, ', stop_time_6 - stop_time_5, '7, ', stop_time_7 - stop_time_6
    !      return
 end subroutine ezampL
 !!cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
